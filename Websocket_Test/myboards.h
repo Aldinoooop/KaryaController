@@ -1,5 +1,5 @@
 //#pragma once
-#ifndef xmyboards_H
+// #ifndef xmyboards_H
   #define myboards_H
 
   //#include "platform.h"
@@ -10,17 +10,17 @@
        _WEMOS_CNC_ONLY
     ============================================================================================
   */
-  #if defined(BOARD_WEMOSCNC_ONLY_V2)
+  // #if defined(BOARD_WEMOSCNC_ONLY_V2)
     #define INDEX "/cnc.html"
-    #define xdirection D5
-    #define xstep D6
+    #define xdirection 4
+    #define xstep 5
 
-    #define zdirection D0
-    #define zstep D3
+    #define zdirection 2
+    #define zstep 14
 
     // z and e have same direction pin, we think that normally slicer never move z and e together.. we hope we right :D
-    #define ydirection D7
-    #define ystep D4
+    #define ydirection 14
+    #define ystep 14
     //#define e0direction D6
     //#define e0step D2
 
@@ -33,7 +33,7 @@
     #define IR_OLED_MENU 0x3c, RX, TX
     //#define IR_OLED_MENU 0x3c, RX, D1
 
-  #else
-    #warning No BOARD Defined !
-  #endif
-#endif
+  // #else
+  //   #warning No BOARD Defined !
+//   #endif
+// #endif

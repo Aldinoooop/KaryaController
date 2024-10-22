@@ -5,9 +5,12 @@
 #include <WebServer.h>
 #include "FS.h"
 #include "SPIFFS.h"
+#include <WebSocketsServer.h>
 
 #include "webmemory.h"
+
 WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
 // #endif
 
 String wifi_ap;
@@ -459,8 +462,8 @@ void setupwifi(int num) {
     // #endif
 
     // #ifdef WEBSOCKSERVER
-    //     webSocket.begin();                  // start the websocket server
-    //     webSocket.onEvent(webSocketEvent);  // if there's an incomming websocket message, go to function 'webSocketEvent'
+        webSocket.begin();                  // start the websocket server
+        webSocket.onEvent(webSocketEvent);  // if there's an incomming websocket message, go to function 'webSocketEvent'
     // #endif
 
     //     if (num)
@@ -647,6 +650,42 @@ void handleFileUpload()
   // INTS
 }
 
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght) {  // When a WebSocket message is received
+  switch (type) {
+    case WStype_DISCONNECTED:  // if the websocket is disconnected
+      // xprintf(PSTR("[%d] Disconnected!\n"), fi(num));
+      Serial.printf("[%u] Disconnected!\n", num);
+      break;
+    case WStype_CONNECTED:
+      {  // if a new websocket connection is established
+        IPAddress ip = webSocket.remoteIP(num);
+        // xprintf(PSTR("[%d] Connected from %d.%d.%d.%d url: %s\n"), fi(num), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]), payload);
+        // Serial.println(String(num) + String(" Connected from ") + String(ip[0]) + String(ip[1]) + String(ip[2]) + String(ip[3]) + String("url : ") + String(payload));
+        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        // on connect, send the scale
+        // zprintf(PSTR("EPR:3 185 %f Lscale\n"), ff(Lscale));
+      }
+      break;
+    case WStype_TEXT:  // if new text data is received
+    Serial.printf("[%u] get Text: %s\n", num, payload);
+      //xprintf(PSTR("%s"),payload);
+      
+      //webSocket.sendTXT(num, payload);
+      // if runnning job, ignore command from all channel
+
+      // if (!uncompress) {
+      //   for (int i = 0; i < lenght; i++) {
+      //     buf_push(wf, payload[i]);
+      //   }
+      // }
+
+      //webSocket.broadcastTXT(payload);
+      break;
+  }
+}
+
+
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -657,4 +696,5 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   server.handleClient();
+  webSocket.loop();
 }
