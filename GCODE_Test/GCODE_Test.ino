@@ -8,6 +8,9 @@
 #include <WebSocketsServer.h>
 
 #include "webmemory.h"
+// #include "common.h"
+#include "gcodesave.h"
+#include "gcode.h"
 
 WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
@@ -28,6 +31,7 @@ int ISWIFIOK = 0;
 int uncompress = 0;
 bool isconfig, isfirmware;
 
+uint8_t wf[256];
 
 void connectWifi(int ret = 1) {
   if (ret) {
@@ -673,9 +677,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght)
       // if runnning job, ignore command from all channel
 
       // if (!uncompress) {
-      //   for (int i = 0; i < lenght; i++) {
-      //     buf_push(wf, payload[i]);
-      //   }
+        for (int i = 0; i < lenght; i++) {
+          buf_push(wf, payload[i]);
+        }
       // }
 
       //webSocket.broadcastTXT(payload);
@@ -683,7 +687,60 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght)
   }
 }
 
+char gcode_loop() {
 
+#ifndef ISPC
+
+
+  char c = 0;
+  if (waitexecute) {
+    if (tryexecute()) {
+      ack_waiting = 1;
+      if (ack_waiting) {
+        //zprintf(PSTR("ok\n"));
+        ack_waiting = 0;
+      }
+
+      #ifdef timingG
+      zprintf(PSTR("Gcode:%dus\n"), fi(micros() - gt));
+      #endif
+    }
+
+  } else {
+    if (ack_waiting) {
+      //zprintf(PSTR("ok\n"));
+      ack_waiting = 0;
+      n = 1;
+    }
+    // wifi are first class
+#ifdef WIFISERVER
+    if (buf_canread(wf)) {
+      buf_pop(wf, c);
+    } else
+#endif
+    {
+      if (serialav()) {
+        if (n) {
+          gt = micros();
+          n = 0;
+        }
+        serialrd(c);
+      }
+    }
+
+    if (c) {
+      if (c == '\n') {
+        lineprocess++;
+      }
+      
+      gcode_parse_char(c);
+    }
+    //motionloop();
+  }
+#else
+#endif
+  return c;
+}
 
 void setup() {
   // put your setup code here, to run once:
