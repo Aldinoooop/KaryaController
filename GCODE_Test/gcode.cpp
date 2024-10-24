@@ -1,9 +1,10 @@
 
 
-#include "webmemory.h"
+#include "common.h"
 #include "gcode.h"
-// #include "timer.h"
-// #include "eprom.h"
+#include "timer.h"
+// #include "temp.h"
+#include "eprom.h"
 #include "gcodesave.h"
 
 #if defined(ESP32) || defined(ESP8266)
@@ -15,7 +16,7 @@
 // ==========================
 #elif ESP32
 #include <WiFi.h>
-#include "FS.h"
+#include "SPIFFS.h"
 // ==========================
 #endif
 
@@ -47,7 +48,7 @@ uint8_t okxyz;
 int g_str_c = 0;
 
 int g_str_l = 0;
-int cutpause=10000;
+
 GCODE_COMMAND next_target;
 uint16_t last_field = 0;
 /// list of powers of ten, used for dividing down decimal numbers for sending, and also for our crude floating point algorithm
@@ -130,15 +131,9 @@ int tryexecute(){
 		return 0;
 	}
   if ((head!=tail) || (cmhead !=cmtail)){ // still have moves, some gcodes need to wait until trully empty
-//    if (!lasermode) {
-//      if (next_target.seen_M && next_target.M==3) return 0;// M3 need buffer to be empty for cnc
-//    }
-
-    if (next_target.seen_M && next_target.M==3) {
-      if (!lasermode)return 0;// M3 need buffer to be empty for cnc
-      if (next_target.seen_P && next_target.P>=0) return 0;
-    }
-
+    #ifndef laser_pin
+    if (next_target.seen_M && next_target.M==3) return 0;// M3 need buffer to be empty for cnc
+    #endif
     if (next_target.seen_M && next_target.G==109) return 0;// G92 need buffer to be empty
     if (next_target.seen_G && next_target.G==92) return 0;// G92 need buffer to be empty
   }
@@ -150,7 +145,7 @@ int tryexecute(){
 	
     if (ok){
       process_gcode_command();
-      zprintf(PSTR("ok\n")); // response quick !!
+      // zprintf(PSTR("ok\n")); // response quick !!
       reset_command();
     }
     waitexecute=false;
@@ -383,29 +378,28 @@ float lastE;
 int overridetemp = 0;
 void printposition()
 {
-  zprintf(PSTR("X:%f Y:%f Z:%f E:%f\n"),
-          ff(info_x), ff(info_y),
-          ff(info_z), ff(ce01));
+  // zprintf(PSTR("X:%f Y:%f Z:%f E:%f\n"),
+  //         ff(info_x), ff(info_y),
+  //         ff(info_z), ff(ce01));
 
 }
 void printbufflen()
 {
-  zprintf(PSTR("Buf:%d\n"), fi(bufflen));
+  // zprintf(PSTR("Buf:%d\n"), fi(bufflen));
 
 }
 void pausemachine()
 {
   PAUSE = !PAUSE;
-  if (PAUSE)zprintf(PSTR("Pause\n"));
-  else zprintf(PSTR("Resume\n"));
+  // if (PAUSE)zprintf(PSTR("Pause\n"));
+  // else zprintf(PSTR("Resume\n"));
 }
-#ifdef IR_OLED_MENU
-#include "ir_oled.h"
-#endif
+// #ifdef IR_OLED_MENU
+// #include "ir_oled.h"
+// #endif
 bool stopping=false;
 void stopmachine(){
   stopping=true;
-  laserOn=0;
 }
 void stopmachine2() {
   // soft stop
@@ -416,9 +410,10 @@ void stopmachine2() {
   enduncompress(true);
   PAUSE=0;
   stopping=false;
-  //set_tool(0);
-  extern int32_t pwm_val;
-  if (lasermode) pwm_val=0;
+  set_pwm(0);
+#ifdef laser_pin
+LASER(!LASERON);
+#endif    
 }
 
 //#define queue_wait() needbuffer()
@@ -437,12 +432,29 @@ void delay_ms(uint32_t d)
 void temp_wait(void)
 {
 
+#ifdef heater_pin
+  wait_for_temp = 1;
+  uint32_t c = millis();
+  while (wait_for_temp && !temp_achieved()) {
+    domotionloop
+    wifi_loop();
+    //report each second
+    if (millis() - c > 1000) {
+      c = millis();
+      zprintf(PSTR("T:%f\n"), ff(Input));
+      //zprintf(PSTR("Heating\n"));
+    }
+  }
+  wait_for_temp = 0;
+#endif
+
 }
 
 int lastB = 0;
 
 void str_wait()
 {
+
 
   //uint32_t c = millis();
   while (lastB > 5) {
@@ -486,16 +498,16 @@ void addlaserxy(float x, float y, uint8_t bit)
     runlasernow();
   }
 }
-int testlaserdur=3000;
+
 void testLaser(void) {
 
-  for (int j = testlaserdur; j--;) {
-    TOOL1(TOOLON)
+  for (int j = 3000; j--;) {
+    LASER(LASERON)
     domotionloop
   }
 
   // after some delay turn off laser
-  TOOL1(!TOOLON);
+  LASER(!LASERON);
 }
 
 static void enqueue(GCODE_COMMAND *) __attribute__ ((always_inline));
@@ -634,8 +646,8 @@ void process_gcode_command()
         //?
         //? In this case move rapidly to X = 12 mm.  In fact, the RepRap firmware uses exactly the same code for rapid as it uses for controlled moves (see G1 below), as - for the RepRap machine - this is just as efficient as not doing so.  (The distinction comes from some old machine tools that used to move faster if the axes were not driven in a straight line.  For them G0 allowed any movement in space to get to the destination as fast as possible.)
         //?
-        //laserOn = 0;
-        //constantlaserVal = 0;
+        laserOn = 0;
+        constantlaserVal = 0;
         enqueue(&next_target, 1);
         break;
 
@@ -707,7 +719,8 @@ void process_gcode_command()
         break;
 #ifdef output_enable
       case 5:
-
+        reset_eeprom();
+        reload_eeprom();
       case 6:
         cx1 = 0;
         cy1 = 0;
@@ -741,22 +754,22 @@ void process_gcode_command()
         // WE NEED TO REIMPLEMENT THE G7 COMMAND
         break;
       case 28:
-        if (lasermode==2) {
-          // Gcode G28 Z40 mean
-          // Probe at this point then ready to cut
-          // Z 40 mean distance between float Z idle and hit the limit switch is 40mm
-          if (next_target.seen_Z) {
-            //MESHLEVELING = 0;
-            //addmove(4000, next_target.target.axis[nX], next_target.target.axis[nY], ocz1, ce01, 1, 0);
-            extern float pointProbing(float floatdis);
-            float zz = pointProbing(next_target.target.axis[nZ]);
-            //zprintf(PSTR("%f\n"), ff(zz));
-          }
-        } else {
-          homing();
-          update_pos();
-          printposition();
+#ifdef PLASMA_MODE
+        // Gcode G28 Z40 mean
+        // Probe at this point then ready to cut
+        // Z 40 mean distance between float Z idle and hit the limit switch is 40mm
+        if (next_target.seen_Z) {
+          //MESHLEVELING = 0;
+          //addmove(4000, next_target.target.axis[nX], next_target.target.axis[nY], ocz1, ce01, 1, 0);
+          extern float pointProbing(float floatdis);
+          float zz = pointProbing(next_target.target.axis[nZ]);
+          //zprintf(PSTR("%f\n"), ff(zz));
         }
+#else
+        homing();
+        update_pos();
+        printposition();
+#endif
         break;
 #ifdef MESHLEVEL
       case 29:
@@ -1043,40 +1056,47 @@ void process_gcode_command()
         next_target.S = 0;
       case 3:
         if (!next_target.seen_S)next_target.S = 255;
-        //if (next_target.S > 4000)next_target.S = next_target.S / 100; // convert 33K RPM max to 255
+        if (next_target.S > 4000)next_target.S = next_target.S / 100; // convert 33K RPM max to 255
         //if (fi(next_target.S) == lastS)break;
-        //lastS = fi(next_target.S);
+        lastS = fi(next_target.S);
         if (!next_target.seen_P) next_target.P = 0;
-        if (lasermode==2 && next_target.S>10)next_target.S=255;
-        set_tool(next_target.S);
+        //waitbufferempty();
+
+        // sometimes ac spindle need a boost at first ON
+		//SPINDLE(next_target.S)
+		set_pwm(next_target.S);
         if (next_target.P >= 10000) {
-          extern void dopause(int tm=0,bool stopping=false);
-          next_target.P=0;
-          next_target.seen_P=0;
-          dopause(cutpause,false);
+			// extern void dopause(int tm=0);
+			next_target.P=0;
+			next_target.seen_P=0;
+			// dopause(5000);
         }
 
         // if no S defined then full power
         S1 = next_target.S;
+        laserOn = S1 > 0;
+        constantlaserVal = next_target.S;
+        //if (laserOn) zprintf(PSTR("LASERON\n"));
 
 
         if (next_target.seen_P) {
           //waitbufferempty();
           //zprintf(PSTR("PULSE LASER\n"));
 
-          //delay(100);
-          //xpinMode(tool1_pin, OUTPUT);
+          delay(100);
+          //xpinMode(laser_pin, OUTPUT);
 
-          TOOL1(TOOLON)
-          
-          int w1=millis();
-          while (millis()-w1<next_target.P) {
-            //delay(10);
+          LASER(LASERON)
+
+
+          int rep = next_target.P / 10;
+          for (int j = 0; j <= rep; j++) {
+            delay(10);
             domotionloop
           }
 
           // after some delay turn off laser
-          //TOOL1(!TOOLON);
+          LASER(!LASERON);
 
         }
         break;
@@ -1114,7 +1134,7 @@ void process_gcode_command()
         break;
 #endif
       case 104:
-        set_temp(next_target.S);
+        // set_temp(next_target.S);
 #ifdef EMULATETEMP
         extern float HEATINGSCALE;
         if (next_target.seen_P) {
@@ -1123,10 +1143,10 @@ void process_gcode_command()
 #endif
         break;
       case 105:
-        zprintf(PSTR("T:%f\n"), ff(Input));
+        // zprintf(PSTR("T:%f\n"), ff(Input));
 #ifdef EMULATETEMP
 #ifdef temp_pin
-        zprintf(PSTR("Tx:%f\n"), ff(xInput));
+        // zprintf(PSTR("Tx:%f\n"), ff(xInput));
 #endif
 #endif
         //zprintf(PSTR("TS:%f\n"), ff(Setpoint));
@@ -1136,9 +1156,9 @@ void process_gcode_command()
         //waitbufferempty();
         if (overridetemp)next_target.S = overridetemp;
         overridetemp = 0;
-        set_temp(next_target.S + 8);
+        // set_temp(next_target.S + 8);
         temp_wait();
-        set_temp(next_target.S);
+        // set_temp(next_target.S);
         break;
       case 7:
       case 107:
@@ -1189,7 +1209,7 @@ void process_gcode_command()
 
       case 115:
         //        zprintf(PSTR("FIRMWARE_NAME:Repetier_1.9 FIRMWARE_URL:null PROTOCOL_VERSION:1.0 MACHINE_TYPE:teacup EXTRUDER_COUNT:1 REPETIER_PROTOCOL:\n"));
-        zprintf(PSTR("FIRMWARE_NAME:Repetier_1.9\n"));
+        // zprintf(PSTR("FIRMWARE_NAME:Repetier_1.9\n"));
 
         break;
 
@@ -1200,84 +1220,182 @@ void process_gcode_command()
         //? firmware to the host.
         docheckendstop(1);
         //zprintf(PSTR("END:"));
-        zprintf(endstopstatus < 0 ? PSTR("HI\n") : PSTR("LOW\n"));
+        // zprintf(endstopstatus < 0 ? PSTR("HI\n") : PSTR("LOW\n"));
         //zprintf(PSTR("\n"));
 
         break;
 
         // unknown mcode: spit an error
-      case 503:
-/*
-        zprintf(PSTR("EPR:3 145 %f X Home Pos\n"), ff(ax_home[0]));
-        zprintf(PSTR("EPR:3 149 %f Y\n"), ff(ax_home[1]));
-        zprintf(PSTR("EPR:3 153 %f Z\n"), ff(ax_home[2]));
+#ifdef USE_EEPROM
+      case 206:
+        if (next_target.seen_X)next_target.S = next_target.target.axis[nX];
+        int32_t S_F;
+        S_F = (next_target.S * 1000);
+        int32_t S_I;
+        S_I = (next_target.S);
+        if (next_target.seen_P)
+          switch (next_target.P) {
+#define eprom_wr(id,pos,val){\
+  case id:\
+    eepromwrite(pos, val);\
+    break;\
+  }
+              eprom_wr(145, EE_xhome, S_F);
+              eprom_wr(149, EE_yhome, S_F);
+              eprom_wr(153, EE_zhome, S_F);
+              eprom_wr(0, EE_estepmm, S_F);
+              eprom_wr(3, EE_xstepmm, S_F);
+              eprom_wr(7, EE_ystepmm, S_F);
+              eprom_wr(11, EE_zstepmm, S_F);
 
-        zprintf(PSTR("EPR:3 3 %f X step/mm\n"), ff(stepmmx[0]));
-        zprintf(PSTR("EPR:3 7 %f Y\n"), ff(stepmmx[1]));
-        zprintf(PSTR("EPR:3 11 %f Z\n"), ff(stepmmx[2]));
-        zprintf(PSTR("EPR:3 0 %f E\n"), ff(stepmmx[3]));
-
-        zprintf(PSTR("EPR:2 15 %d X maxF\n"), fi(maxf[0]));
-        zprintf(PSTR("EPR:2 19 %d Y\n"), fi(maxf[1]));
-        zprintf(PSTR("EPR:2 23 %d Z\n"), fi(maxf[2]));
-        zprintf(PSTR("EPR:2 27 %d E\n"), fi(maxf[3]));
-
-
-        zprintf(PSTR("EPR:3 181 %d Corner\n"), fi(xycorner));
-        zprintf(PSTR("EPR:3 51 %d Acl\n"), fi(accel));
-
-        zprintf(PSTR("EPR:3 177 %d HomeF\n"), fi(homingspeed));
-        zprintf(PSTR("EPR:3 185 %f Lscale\n"), ff(Lscale));
-#ifdef USE_BACKLASH
-        zprintf(PSTR("EPR:3 80 %f X Backlash\n"), fi(xback[0]));
-        zprintf(PSTR("EPR:3 84 %f Y\n"), fi(xback[1]));
-        zprintf(PSTR("EPR:3 88 %f Z\n"), fi(xback[2]));
-        zprintf(PSTR("EPR:3 92 %f E\n"), fi(xback[3]));
-#endif
+              eprom_wr(15, EE_max_x_feedrate, S_I);
+              eprom_wr(19, EE_max_y_feedrate, S_I);
+              eprom_wr(23, EE_max_z_feedrate, S_I);
+              eprom_wr(27, EE_max_e_feedrate, S_I);
 
 
+              eprom_wr(51, EE_accel, S_I);
+
+
+              eprom_wr(177, EE_homing, S_I);
+              eprom_wr(181, EE_corner, S_I);
+              eprom_wr(185, EE_Lscale, S_F);
+
+              eprom_wr(165, EE_towera_ofs, S_F);
+              eprom_wr(169, EE_towerb_ofs, S_F);
+              eprom_wr(173, EE_towerc_ofs, S_F);
 
 #ifdef ANALOG_THC
-        zprintf(PSTR("EPR:3 157 %d THCRef\n"), fi(thc_up));
-        zprintf(PSTR("EPR:3 161 %d THCOfs\n"), fi(thc_ofs));
+              eprom_wr(157, EE_thc_up, S_I);
+              eprom_wr(161, EE_thc_ofs, S_I);
+#endif
+              eprom_wr(300, EE_retract_in, S_F);
+              eprom_wr(304, EE_retract_in_f, S_F);
+              eprom_wr(308, EE_retract_out, S_F);
+              eprom_wr(312, EE_retract_out_f, S_F);
+
+              eprom_wr(316, EE_pid_p, S_F);
+              eprom_wr(320, EE_pid_i, S_F);
+              eprom_wr(324, EE_pid_d, S_F);
+              eprom_wr(328, EE_pid_bang, S_F);
+              eprom_wr(340, EE_pid_HS, S_F);
+#if defined(ESP32) || defined(ESP8266)
+              eprom_wr(380, EE_gcode, S_I);
+#endif
+              eprom_wr(332, EE_ext_adv, S_F);
+              eprom_wr(336, EE_un_microstep, S_I);
+#ifdef USE_BACKLASH
+              eprom_wr(80, EE_xbacklash, S_F);
+              eprom_wr(84, EE_ybacklash, S_F);
+              eprom_wr(88, EE_zbacklash, S_F);
+              eprom_wr(92, EE_ebacklash, S_F);
+#endif
+#ifdef WIFISERVER
+            case 400:
+              eepromwritestring(400, g_str);
+              break;
+            case 450:
+              eepromwritestring(450, g_str);
+              break;
+            case 470:
+              eepromwritestring(470, g_str);
+              break;
+#endif
+          }
+        reload_eeprom();
+        break;
+#ifndef SAVE_RESETMOTION
+      case 502:
+        reset_eeprom();
+#endif
+      case 205:
+        reload_eeprom();
+#endif
+      case 503:
+
+        // zprintf(PSTR("EPR:3 145 %f X Home Pos\n"), ff(ax_home[0]));
+        // zprintf(PSTR("EPR:3 149 %f Y\n"), ff(ax_home[1]));
+        // zprintf(PSTR("EPR:3 153 %f Z\n"), ff(ax_home[2]));
+
+        // zprintf(PSTR("EPR:3 3 %f X step/mm\n"), ff(stepmmx[0]));
+        // zprintf(PSTR("EPR:3 7 %f Y\n"), ff(stepmmx[1]));
+        // zprintf(PSTR("EPR:3 11 %f Z\n"), ff(stepmmx[2]));
+        // zprintf(PSTR("EPR:3 0 %f E\n"), ff(stepmmx[3]));
+
+        // zprintf(PSTR("EPR:2 15 %d X maxF\n"), fi(maxf[0]));
+        // zprintf(PSTR("EPR:2 19 %d Y\n"), fi(maxf[1]));
+        // zprintf(PSTR("EPR:2 23 %d Z\n"), fi(maxf[2]));
+        // zprintf(PSTR("EPR:2 27 %d E\n"), fi(maxf[3]));
+
+
+        // zprintf(PSTR("EPR:3 181 %d Corner\n"), fi(xycorner));
+        // zprintf(PSTR("EPR:3 51 %d Acl\n"), fi(accel));
+
+        // zprintf(PSTR("EPR:3 177 %d HomeF\n"), fi(homingspeed));
+        // zprintf(PSTR("EPR:3 185 %f Lscale\n"), ff(Lscale));
+
+#ifdef ANALOG_THC
+        // zprintf(PSTR("EPR:3 157 %d THCRef\n"), fi(thc_up));
+        // zprintf(PSTR("EPR:3 161 %d THCOfs\n"), fi(thc_ofs));
 #endif
 
-        zprintf(PSTR("EPR:3 165 %f Xofs\n"), ff(axisofs[0]));
+        // zprintf(PSTR("EPR:3 165 %f Xofs\n"), ff(axisofs[0]));
 #ifdef DRIVE_XYYZ
-        zprintf(PSTR("EPR:3 169 %f Y1ofs\n"), ff(axisofs[1]));
-        zprintf(PSTR("EPR:3 173 %f Y2ofs\n"), ff(axisofs[2]));
+        // zprintf(PSTR("EPR:3 169 %f Y1ofs\n"), ff(axisofs[1]));
+        // zprintf(PSTR("EPR:3 173 %f Y2ofs\n"), ff(axisofs[2]));
 #else
-        zprintf(PSTR("EPR:3 169 %f Yofs\n"), ff(axisofs[1]));
-        zprintf(PSTR("EPR:3 173 %f Zofs\n"), ff(axisofs[2]));
+        // zprintf(PSTR("EPR:3 169 %f Yofs\n"), ff(axisofs[1]));
+        // zprintf(PSTR("EPR:3 173 %f Zofs\n"), ff(axisofs[2]));
 #endif
 
-        zprintf(PSTR("EPR:3 300 %f AtRetractIn\n"), ff(retract_in));
-        zprintf(PSTR("EPR:3 304 %f F\n"), ff(retract_in_f));
-        zprintf(PSTR("EPR:3 308 %f Out\n"), ff(retract_out));
-        zprintf(PSTR("EPR:3 312 %f F\n"), ff(retract_out_f));
+        // zprintf(PSTR("EPR:3 300 %f AtRetractIn\n"), ff(retract_in));
+        // zprintf(PSTR("EPR:3 304 %f F\n"), ff(retract_in_f));
+        // zprintf(PSTR("EPR:3 308 %f Out\n"), ff(retract_out));
+        // zprintf(PSTR("EPR:3 312 %f F\n"), ff(retract_out_f));
 
-#if defined(heater_pin)
-        zprintf(PSTR("EPR:3 316 %f P\n"), ff(myPID.GetKp()));
-        zprintf(PSTR("EPR:3 320 %f I\n"), ff(myPID.GetKi()));
-        zprintf(PSTR("EPR:3 324 %f D\n"), ff(myPID.GetKd()));
+// #ifdef USE_BACKLASH
+//         zprintf(PSTR("EPR:3 80 %f X Backlash\n"), fi(xback[0]));
+//         zprintf(PSTR("EPR:3 84 %f Y\n"), fi(xback[1]));
+//         zprintf(PSTR("EPR:3 88 %f Z\n"), fi(xback[2]));
+//         zprintf(PSTR("EPR:3 92 %f E\n"), fi(xback[3]));
+// #endif
+// #if defined(heater_pin)
+//         zprintf(PSTR("EPR:3 316 %f P\n"), ff(myPID.GetKp()));
+//         zprintf(PSTR("EPR:3 320 %f I\n"), ff(myPID.GetKi()));
+//         zprintf(PSTR("EPR:3 324 %f D\n"), ff(myPID.GetKd()));
 #ifdef EMULATETEMP
-        zprintf(PSTR("EPR:3 328 %f ET\n"), ff(tbang));
-        zprintf(PSTR("EPR:3 340 %f HS\n"), ff(HEATINGSCALE));
+        // zprintf(PSTR("EPR:3 328 %f ET\n"), ff(tbang));
+        // zprintf(PSTR("EPR:3 340 %f HS\n"), ff(HEATINGSCALE));
 #endif
-#endif
+// #endif
 #if  defined(RPM_COUNTER)
         extern PID RPM_PID;
-        zprintf(PSTR("EPR:3 316 %f P\n"), ff(RPM_PID.GetKp()));
-        zprintf(PSTR("EPR:3 320 %f I\n"), ff(RPM_PID.GetKi()));
-        zprintf(PSTR("EPR:3 324 %f D\n"), ff(RPM_PID.GetKd()));
+        // zprintf(PSTR("EPR:3 316 %f P\n"), ff(RPM_PID.GetKp()));
+        // zprintf(PSTR("EPR:3 320 %f I\n"), ff(RPM_PID.GetKi()));
+        // zprintf(PSTR("EPR:3 324 %f D\n"), ff(RPM_PID.GetKd()));
 #endif
-        zprintf(PSTR("EPR:3 332 %f EXTADV\n"), ff(extadv));
+        // zprintf(PSTR("EPR:3 332 %f EXTADV\n"), ff(extadv));
         //zprintf(PSTR("EPR:3 336 %d UNMS\n"), fi(unms));
 #ifdef WIFISERVER
-        zprintf(PSTR("EPR:3 380 %d GCODE\n"), fi(wifi_gcode));
+        // zprintf(PSTR("EPR:3 380 %d GCODE\n"), fi(wifi_gcode));
 #endif
-*/
         break;
+#ifdef WIFISERVER
+      // show wifi
+      case 504:
+
+        // zprintf(PSTR("Wifi AP 400:%s PWD 450:%s mDNS 470:%s\n"), wifi_ap, wifi_pwd, wifi_dns);
+        // zprintf(PSTR("%d.%d.%d.%d\n"), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
+        //zprintf(PSTR("NGOPO TO !"));
+        break;
+      case 505:
+
+        ESP.restart();
+        //zprintf(PSTR("Wifi AP 400:%s PWD 450:%s mDNS 470:%s\n"), wifi_ap, wifi_pwd, wifi_dns);
+        break;
+#endif
+#ifdef USE_EEPROM
+#endif
       case 220:
         //? --- M220: Set speed factor override percentage ---
         if ( ! next_target.seen_S)
@@ -1287,13 +1405,13 @@ void process_gcode_command()
         MLOOP
 
         break;
-/*        
       case 290: // m290 baby step in X Y Z E in milimeter
         if (next_target.seen_X) babystep[0] = next_target.target.axis[nX] * 4000;
         if (next_target.seen_Y) babystep[1] = next_target.target.axis[nY] * 4000;
         if (next_target.seen_Z) babystep[2] = next_target.target.axis[nZ] * 4000;
         if (next_target.seen_E) babystep[3] = next_target.target.axis[nE] * 4000;
         break;
+
       case 221:
         //? --- M220: Set speed factor override percentage ---
         if ( ! next_target.seen_S)
@@ -1306,7 +1424,6 @@ void process_gcode_command()
       case 600: // change filament M600 Sxxx          S = length mm to unload filament, it will add 10mm when load, click endstop to resume
         changefilament(next_target.S);
         break;
-*/
         //      default:
         //zprintf(PSTR("E:M%d\nok\n"), next_target.M);
     } // switch (next_target.M)
@@ -1317,4 +1434,6 @@ void init_gcode()
 {
   next_target.target.F = 50;
   next_target.option_all_relative = 0;
+
+
 }

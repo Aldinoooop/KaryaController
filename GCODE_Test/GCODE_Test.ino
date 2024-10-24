@@ -7,18 +7,22 @@
 #include "SPIFFS.h"
 #include <WebSocketsServer.h>
 
-#include "webmemory.h"
-// #include "common.h"
-#include "gcodesave.h"
+// #include "webmemory.h"
+#include "common.h"
+// #include "gcodesave.h"
 #include "gcode.h"
+#include "eprom.h"
+
+  
+unsigned long lastTime = 0;
 
 WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 // #endif
 
-String wifi_ap;
-String wifi_pwd;
-String wifi_dns;
+// String wifi_ap;
+// String wifi_pwd;
+// String wifi_dns;
 
 IPAddress fixedip;
 IPAddress ip;
@@ -32,6 +36,17 @@ int uncompress = 0;
 bool isconfig, isfirmware;
 
 uint8_t wf[256];
+uint8_t wfhead = 0;
+uint8_t wftail = 0;
+uint8_t wfbuf[256];
+char wfb[300];
+int wfl = 0;
+int bpwf = 0;
+
+int line_done, ack_waiting = 0;
+int ct = 0;
+uint32_t gt = 0;
+int n = 0;
 
 void connectWifi(int ret = 1) {
   if (ret) {
@@ -87,7 +102,7 @@ void setupwifi(int num) {
 #endif
     }
     if (wifi_ap) connectWifi(0);
-    String ipa = "->" + wifi_ap;
+    String ipa = String("->") + wifi_ap;
     ISWIFIOK = 0;
     if ((connect_timeout > 0 && WiFi.status() != WL_CONNECTED) || wifi_ap.length() == 0) {
       // xprintf(PSTR("Access Point Mode\n"));
@@ -100,12 +115,12 @@ void setupwifi(int num) {
       WiFi.mode(WIFI_AP);
       ISWIFIOK = 0;
 
-      if (wifi_dns == "") wifi_dns = "ESP_CNC";
+      if (wifi_dns == "") wifi_dns = String("ESP_CNC");
       WiFi.softAP(wifi_dns);
 
       //ip = WiFi.softAPIP();
       //xprintf(PSTR("AP:%s Ip:%d.%d.%d.%d\n"), ((' '<wifi_dns[0]<'Z')?wifi_dns:ssid), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
-      ipa = wifi_dns + " : 4.1";
+      ipa = String(wifi_dns) + String(" : 4.1");
       Serial.print(ipa);
     }
 
@@ -170,7 +185,7 @@ void setupwifi(int num) {
       String st = "disconnected";
       if (WiFi.status() == WL_CONNECTED)
         st = "connected";
-      server.send(200, "text/html", "['" + wifi_ap + "','" + wifi_pwd + "','" + wifi_dns + "','" + st + "']");
+      server.send(200, "text/html", String("['") + wifi_ap + "','" + wifi_pwd + "','" + wifi_dns + "','" + st + "']");
     });
 
     server.on("/scanwifi", HTTP_GET, []() {
@@ -466,8 +481,8 @@ void setupwifi(int num) {
     // #endif
 
     // #ifdef WEBSOCKSERVER
-        webSocket.begin();                  // start the websocket server
-        webSocket.onEvent(webSocketEvent);  // if there's an incomming websocket message, go to function 'webSocketEvent'
+    webSocket.begin();                  // start the websocket server
+    webSocket.onEvent(webSocketEvent);  // if there's an incomming websocket message, go to function 'webSocketEvent'
     // #endif
 
     //     if (num)
@@ -608,13 +623,11 @@ String getContentType(String filename) {  // convert the file extension to the M
   return "text/plain";
 }
 
-void handleFileUpload()
-{ // upload a new file to the SPIFFS
+void handleFileUpload() {  // upload a new file to the SPIFFS
   // NOINTS
   if (uncompress) {
     server.send(500, "text/plain", "Still PRINTING");
-  }
-  else {
+  } else {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       String filename = upload.filename;
@@ -625,28 +638,25 @@ void handleFileUpload()
       // always rename any config to config.ini, except custom.ini
       isconfig = filename.endsWith(".ini");
       isfirmware = filename.endsWith(".bin");
-      if (isconfig && !filename.startsWith("/custom"))filename = "/config.ini";
-      if (isfirmware)filename = "/firmware.bin";
+      if (isconfig && !filename.startsWith("/custom")) filename = "/config.ini";
+      if (isfirmware) filename = "/firmware.bin";
       // xprintf(PSTR("handleFileUpload Name: %s\n"), filename.c_str());
       Serial.println("handleFileUpload Name: " + String(filename));
-      fsUploadFile = SPIFFS.open(filename, "w"); // Open the file for writing in SPIFFS (create if it doesn't exist)
+      fsUploadFile = SPIFFS.open(filename, "w");  // Open the file for writing in SPIFFS (create if it doesn't exist)
       filename = String();
-    }
-    else if (upload.status == UPLOAD_FILE_WRITE) {
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
       // do temploop to avoid overheating
       // temp_loop(micros());
       if (fsUploadFile)
-        fsUploadFile.write(upload.buf, upload.currentSize); // Write the received bytes to the file
-    }
-    else if (upload.status == UPLOAD_FILE_END) {
-      if (fsUploadFile) { // If the file was successfully created
-        fsUploadFile.close(); // Close the file again
+        fsUploadFile.write(upload.buf, upload.currentSize);  // Write the received bytes to the file
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (fsUploadFile) {      // If the file was successfully created
+        fsUploadFile.close();  // Close the file again
         //xprintf(PSTR("handleFileUpload Size: %d\n"), upload.totalSize);
-        server.sendHeader("Location", "/upload"); // Redirect the client to the success page
+        server.sendHeader("Location", "/upload");  // Redirect the client to the success page
         server.send(303);
         // if (isconfig)readconfigs();
-      }
-      else {
+      } else {
         server.send(500, "text/plain", "500: couldn't create file");
       }
     }
@@ -664,22 +674,26 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght)
       {  // if a new websocket connection is established
         IPAddress ip = webSocket.remoteIP(num);
         // xprintf(PSTR("[%d] Connected from %d.%d.%d.%d url: %s\n"), fi(num), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]), payload);
-        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        
+        // Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        
         // on connect, send the scale
         // zprintf(PSTR("EPR:3 185 %f Lscale\n"), ff(Lscale));
       }
       break;
     case WStype_TEXT:  // if new text data is received
-    Serial.printf("[%u] get Text: %s\n", num, payload);
+
+      // Serial.printf("[%u] get Text: %s\n", num, payload);
+    
       //xprintf(PSTR("%s"),payload);
-      
+
       //webSocket.sendTXT(num, payload);
       // if runnning job, ignore command from all channel
 
       // if (!uncompress) {
-        for (int i = 0; i < lenght; i++) {
-          buf_push(wf, payload[i]);
-        }
+      for (int i = 0; i < lenght; i++) {
+        buf_push(wf, payload[i]);
+      }
       // }
 
       //webSocket.broadcastTXT(payload);
@@ -701,9 +715,9 @@ char gcode_loop() {
         ack_waiting = 0;
       }
 
-      #ifdef timingG
+#ifdef timingG
       zprintf(PSTR("Gcode:%dus\n"), fi(micros() - gt));
-      #endif
+#endif
     }
 
   } else {
@@ -732,7 +746,7 @@ char gcode_loop() {
       if (c == '\n') {
         lineprocess++;
       }
-      
+
       gcode_parse_char(c);
     }
     //motionloop();
@@ -753,4 +767,12 @@ void loop() {
   // put your main code here, to run repeatedly:
   server.handleClient();
   webSocket.loop();
+  char c = 0;
+  c = gcode_loop();
+  if(millis()- lastTime >= 1000){
+  Serial.println(c);
+  lastTime = millis();
+  }
+
+
 }

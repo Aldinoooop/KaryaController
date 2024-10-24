@@ -13,13 +13,14 @@ void IRAM_ATTR onTimer() {
 void timer_init() {
   // Inisialisasi timer dengan timer 0, prescaler 80 (1 tick = 1 µs)
   // My_timer = timerBegin(0, 80, true);
+  My_timer = timerBegin(1000000);
 
   // Hubungkan fungsi interrupt ke timer
   // timerAttachInterrupt(My_timer, &onTimer, true);
   timerAttachInterrupt(My_timer, &onTimer);
 
   // Atur alarm timer untuk memicu interrupt setiap 12.000 µs (12 ms)
-  timerAlarm(My_timer, 12000, true); 
+  timerAlarm(My_timer, 12000, true,0); 
   // timerAlarmWrite(My_timer, 12000, true);
 
   // // Aktifkan alarm timer
