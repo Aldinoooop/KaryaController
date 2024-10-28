@@ -13,7 +13,7 @@
 #include "gcode.h"
 #include "eprom.h"
 
-  
+
 unsigned long lastTime = 0;
 
 WebServer server(80);
@@ -674,9 +674,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght)
       {  // if a new websocket connection is established
         IPAddress ip = webSocket.remoteIP(num);
         // xprintf(PSTR("[%d] Connected from %d.%d.%d.%d url: %s\n"), fi(num), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]), payload);
-        
+
         // Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-        
+
         // on connect, send the scale
         // zprintf(PSTR("EPR:3 185 %f Lscale\n"), ff(Lscale));
       }
@@ -684,7 +684,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t lenght)
     case WStype_TEXT:  // if new text data is received
 
       // Serial.printf("[%u] get Text: %s\n", num, payload);
-    
+
       //xprintf(PSTR("%s"),payload);
 
       //webSocket.sendTXT(num, payload);
@@ -761,6 +761,11 @@ void setup() {
   Serial.begin(115200);
   SPIFFS.begin(true);
   setupwifi(0);
+  initmotion();
+  init_gcode();
+  // init_temp();
+  // reload_eeprom();
+  timer_init();
 }
 
 void loop() {
@@ -769,10 +774,9 @@ void loop() {
   webSocket.loop();
   char c = 0;
   c = gcode_loop();
-  if(millis()- lastTime >= 1000){
-  Serial.println(c);
-  lastTime = millis();
-  }
-
-
+  motionloop();
+  // if (millis() - lastTime >= 1000) {
+  //   Serial.println(c);
+  //   lastTime = millis();
+  // }
 }

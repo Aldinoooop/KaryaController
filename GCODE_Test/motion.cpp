@@ -1419,6 +1419,7 @@ int32_t estep;
 
 
 int empty1 = 0;
+
 int32_t startmove()
 {
   if (!RUNNING)return 0;
