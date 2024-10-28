@@ -1,0 +1,44 @@
+1. Power Pins
+Vin / V5: Pin input tegangan, biasanya digunakan untuk memasok daya ke modul ESP32. Tegangan input standar adalah 5V.
+3.3V: Pin keluaran yang memberikan daya 3.3V, bisa digunakan untuk memasok daya ke sensor atau perangkat lain yang membutuhkan tegangan 3.3V.
+GND: Pin ground, penting untuk menutup rangkaian. Terdapat beberapa pin GND pada modul ESP32.
+
+2. GPIO (General Purpose Input/Output) Pins
+GPIO Pins (0–39): Digunakan sebagai pin input atau output. Pin ini juga memiliki fungsi spesial sebagai ADC, PWM, I2C, SPI, dll.
+GPIO 0, 2, 4, 12-15, 25-27, 32-39: Dapat digunakan sebagai pin input dan output.
+GPIO 1, 3: Digunakan sebagai UART TX/RX (terbatas penggunaannya karena digunakan untuk komunikasi serial).
+Maximum Current: GPIO pins dapat memberikan arus maksimum 12mA.
+
+3. Analog Pins
+ADC1 (GPIO 32–39) dan ADC2 (GPIO 0, 2, 4, 12-15, 25-27): ESP32 memiliki 18 channel ADC dengan resolusi hingga 12-bit.
+DAC (GPIO 25, 26): Pin ini dapat digunakan sebagai output analog dengan Digital to Analog Converter, berguna untuk aplikasi yang membutuhkan sinyal analog.
+
+4. Touch Pins
+Touch Pins (GPIO 0, 2, 4, 12-15, 27, 32-33): ESP32 memiliki 10 touch pins yang dapat mendeteksi sentuhan kapasitif.
+
+5. UART Pins
+UART0 (GPIO 1 - TX0, GPIO 3 - RX0): Port UART utama digunakan untuk komunikasi serial, seperti program upload.
+UART1 dan UART2: GPIO yang dapat dipetakan ke port UART lain, seperti GPIO 9, 10, dan beberapa lainnya.
+
+6. SPI (Serial Peripheral Interface) Pins
+Default SPI Pins:
+MISO: GPIO 19
+MOSI: GPIO 23
+SCK: GPIO 18
+CS: GPIO 5
+Pin ini dapat dikonfigurasi ulang sesuai kebutuhan, karena ESP32 mendukung SPI melalui multiplexing.
+
+7. I2C Pins
+SDA: GPIO 21
+SCL: GPIO 22
+ESP32 dapat mendukung beberapa jalur I2C sekaligus, tetapi jalur default ini yang paling sering digunakan.
+
+8. PWM (Pulse Width Modulation) Pins
+GPIO PWM: Semua pin GPIO pada ESP32 mendukung PWM dan dapat menghasilkan sinyal PWM dengan frekuensi hingga 40 kHz.
+
+9. Other Important Pins
+EN (Enable): Pin ini digunakan untuk mengaktifkan modul ESP32. Jika disambungkan ke ground, ESP32 akan berada dalam mode reset.
+BOOT: Digunakan untuk masuk ke mode pemrograman atau flash.
+
+10. Strapping Pins
+GPIO 0, GPIO 2, GPIO 12, GPIO 15: Pin khusus yang menentukan mode boot ESP32 (flash, normal boot).
