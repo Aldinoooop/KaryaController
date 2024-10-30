@@ -9,7 +9,9 @@ hw_timer_t *timer2 = NULL;
 // Fungsi yang akan dipanggil saat interrupt timer terpicu
 void IRAM_ATTR onTimer1() {
   // Tindakan yang akan dilakukan saat interrupt terpicu
-  Serial.println("Timer1 Interrupt Triggered");
+  digitalWrite(26,HIGH);
+  // Serial.println("Timer1 Interrupt Triggered");
+  digitalWrite(26,LOW);
 }
 
 void IRAM_ATTR onTimer2() {
@@ -22,24 +24,25 @@ void timer_init() {
   // My_timer = timerBegin(0, 80, true);
   // My_timer = timerBegin(1000000);
   timer1 = timerBegin(1000000);
-  timer2 = timerBegin(1000000);
+  // timer2 = timerBegin(1000000);
 
   // Hubungkan fungsi interrupt ke timer
   // timerAttachInterrupt(My_timer, &onTimer, true);
   // timerAttachInterrupt(My_timer, &onTimer);
   timerAttachInterrupt(timer1, &onTimer1);
-  timerAttachInterrupt(timer2, &onTimer2);
+  // timerAttachInterrupt(timer2, &onTimer2);
 
   // Atur alarm timer untuk memicu interrupt setiap 12.000 µs (12 ms)
-  timerAlarm(timer1, 1000000, true, 0);
-  timerAlarm(timer2, 2000000, true, 0);
+  timerAlarm(timer1, 100, true, 0);
+  // timerAlarm(timer2, 2000000, true, 0);
   // timerAlarmWrite(My_timer, 12000, true);
 
   // // Aktifkan alarm timer
   // timerAlarmEnable(My_timer);
 
   Serial.println("Timer initialized");
-  // timerStart(timer1);
+  // timerAlarmEnable(stepperTimer);
+  timerStart(timer1);
   // timerStart(timer2);
   // timerWrite(timer1, 0);
   // timerWrite(timer2, 0);
@@ -48,6 +51,7 @@ void timer_init() {
 void setup() {
   // Inisialisasi komunikasi serial untuk debug output
   Serial.begin(115200);
+  pinMode(26,OUTPUT);
 
   // Inisialisasi timer
   timer_init();
