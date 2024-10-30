@@ -1,0 +1,277 @@
+<head>
+  <!-- Plotly.js -->
+   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+  Max Vel <input id=vel value="100" size=4>
+  Accel <input id=acc value="50" size=4>
+  Jerk <input id=jerk value="50" size=4>
+  <br>
+ <button onclick="plotvar();">Plot</button><br>  
+  <div id="myDiv"><!-- Plotly chart will be drawn inside this DIV --></div>
+  <script>
+    <!-- JAVASCRIPT CODE GOES HERE -->
+function mround(x) {
+    return parseFloat(x).toFixed(2);
+}
+
+function $(id) {
+    return document.getElementById(id);
+}
+function getvalue(el) {
+    return $(el).value;
+}
+
+function setvalue(el, val) {
+    $(el).value = val;
+}
+
+var dataJ=[];
+var vel=[];
+var acl=[];
+var jrk=[];
+var ax=[];
+var ii=0;
+
+function planme(pv,pa,cv,ca,nv,na,j){	
+	var v=0;
+	var sc=1;
+	var steps=100;
+
+	scalea=1;
+	scalej=1;
+
+	da1=(ca-pa);
+	da2=(na-ca)
+	jru=Math.ceil(da/j);
+	jrd=Math.ceil(Math.abs(da2/j));
+	
+	ramp=Math.ceil(vt/aa);
+	if (jru>ramp/2)jru=ramp/2;
+	if (jrd>ramp/2)jrd=ramp/2;
+	
+	// recalculate
+	if (j>=ca){j=ca;jru=1;jrd=1;dataJ=[];}
+
+	a=vt*1.0/ramp;
+	ju=a*1.0/jru;
+	jd=a*1.0/jrd;
+
+	va1=a*(ramp-jru+1);
+	va2=a*(ramp-jrd+1);
+
+	scu=vt/va1;
+	scd=vt/va2;
+
+
+	rampup=ramp;
+	rampdn=ramp;
+	xrampup=rampup;
+	xrampdn=steps-rampdn;
+	jup1=jr;
+	jup2=rampup-jr;
+	jdn1=xrampdn+jr;
+	jdn2=steps-jr;
+	xa=0;
+	for(i=0;i<steps;i++){
+		la=xa;
+		if (xrampup>=0){
+			if (jup1>0)xa+=j;
+			if (jup2<0)xa+=-j;
+			m=sc;
+		}	
+		else if (xrampdn<=0){
+			if (jdn1>0)xa+=j;
+			if (jdn2<0)xa+=-j;
+			m=-sc;
+		} else {
+			xa=0;
+		}
+		jk=xa-la;
+		aa=xa;
+		//if (aa>a)aa=a;
+		//if (aa<0)aa=0;
+		v=v+aa*m;
+		
+		xrampup--;
+		xrampdn--;
+		jup1--;
+		jup2--;
+		jdn1--;
+		jdn2--;
+		ax.push(ii++);
+		vel.push(v);
+		if(jr==1)dataJ.push(v);
+		acl.push(aa*scalea*sc);
+		jrk.push(jk*scalej*sc);
+		
+	}
+
+	var trace1 = {
+	  x: ax,
+	  y: vel,
+	  mode: 'lines',
+		name: "Velo"
+
+	};
+	var trace1a = {
+	  x: ax,
+	  y: dataJ,
+	  mode: 'lines',
+		name: "Velo"
+
+	};
+	var trace2 = {
+	  x: ax,
+	  y: acl,
+	  mode: 'lines',
+	  name: "Accel"
+	};
+	var trace3 = {
+	  x: ax,
+	  y: jrk,
+	  mode: 'lines',
+		name: "Jerk"
+
+	};
+	var pdata = [ trace1,trace1a,trace2,trace3];
+
+	var layout = {};
+
+	Plotly.newPlot('myDiv', pdata, layout);
+}
+var steppermm=50;
+// r1 - ramp jerk 1
+// r2 - ramp jerk 2
+// r3 - ramp jerk 3
+// r4 - ramp jerk 4
+
+function plotme(vt,a,j,r1,r2,r3,r4){	
+	dataJ=[];
+	vel=[];
+	acl=[];
+	jrk=[];
+	ax=[];
+	
+	var v=0;
+	var sc=1;
+	var steps=10*steppermm;
+
+	scalea=1;
+	scalej=1;
+
+    // calculate steps for ramps
+	ramp=Math.ceil(vt*steppermm/a); // steps for acceleration
+	jj=[a,a,a,a];
+	jr=[steppermm,steppermm,steppermm,steppermm];
+	// recalculate
+	if (j>=a*steppermm){
+		// jerk must smaller than acceleration
+	} else {
+		jrt=Math.ceil(a*steppermm/j); // steps for jerk
+		if (jrt>ramp/2)jrt=ramp/2; // ramp for jerk must not more than half of the ramp steps
+
+		if (r1)jr[0]=t;
+		if (r2)jr[1]=t;
+		if (r3)jr[2]=t;
+		if (r4)jr[0]=t;
+	}
+
+	a=vt*1.0/ramp;
+	j=a*1.0/jr;
+
+	va=a*(ramp-jr+1);
+
+	sc=(vt/va);
+
+
+	rampup=ramp;
+	rampdn=ramp;
+	xrampup=rampup;
+	xrampdn=steps-rampdn;
+
+	xa=a;
+	j1=j;
+	jup1=jr*(xa?0:1); // jerk ramp up
+	
+	j2=j*2;
+	jup2=rampup-jr;
+	j3=j;
+	jdn1=xrampdn+jr; // jerk ramp down
+	j4=j;
+	jdn2=steps-jr;
+	ax=[];
+	for(i=0;i<steps;i++){
+		la=xa;
+		if (xrampup>=0){
+			if (jup1>0)xa+=j1;
+			if (jup2<0)xa+=-j2;
+			m=sc;
+		}	
+		else if (xrampdn<=0){
+			if (jdn1>0)xa+=j3;
+			if (jdn2<0)xa+=-j4;
+			m=-sc;
+		} else {
+			xa=0;
+		}
+		jk=xa-la;
+		aa=xa;
+		//if (aa>a)aa=a;
+		//if (aa<0)aa=0;
+		v=v+aa*m;
+		
+		xrampup--;
+		xrampdn--;
+		jup1--;
+		jup2--;
+		jdn1--;
+		jdn2--;
+		ax.push(i);
+		vel.push(v);
+		if(jr==1)dataJ.push(v);
+		acl.push(aa*scalea*sc);
+		jrk.push(jk*scalej*sc);
+		
+	}
+
+	var trace1 = {
+	  x: ax,
+	  y: vel,
+	  mode: 'lines',
+		name: "Velo"
+
+	};
+	var trace1a = {
+	  x: ax,
+	  y: dataJ,
+	  mode: 'lines',
+		name: "Velo"
+
+	};
+	var trace2 = {
+	  x: ax,
+	  y: acl,
+	  mode: 'lines',
+	  name: "Accel"
+	};
+	var trace3 = {
+	  x: ax,
+	  y: jrk,
+	  mode: 'lines',
+		name: "Jerk"
+
+	};
+	var pdata = [ trace1,trace1a,trace2,trace3];
+
+	var layout = {};
+
+	Plotly.newPlot('myDiv', pdata, layout);
+}
+
+function plotvar(){
+	plotme(getvalue("vel")*1.0,getvalue("acc")*1.0,getvalue("jerk")*1.0,0,1,1,1);
+}
+</script>
+</body>
