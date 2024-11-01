@@ -778,14 +778,15 @@ void connectWifi(int ret = 1) {
   }
 
   xprintf(PSTR("Try connect wifi AP:%s \n"), wifi_ap);
-  WiFi.mode(WIFI_STA);
-  if (fixedip[0] > 0) {
-    IPAddress gateway;
-    gateway = fixedip;
-    gateway[3] = 1;
-    IPAddress subnet(255, 255, 255, 0);
-    WiFi.config(fixedip, gateway, subnet);
-  }
+
+  // WiFi.mode(WIFI_STA);
+  // if (fixedip[0] > 0) {
+  //   IPAddress gateway;
+  //   gateway = fixedip;
+  //   gateway[3] = 1;
+  //   IPAddress subnet(255, 255, 255, 0);
+  //   WiFi.config(fixedip, gateway, subnet);
+  // }
   WiFi.begin(wifi_ap, wifi_pwd);
 
   int cntr = connect_timeout;
@@ -804,27 +805,66 @@ void connectWifi(int ret = 1) {
     Serial.print(".");
   }
 
+   int tryDelay = 500;
+  int numberOfTries = 20;
+
+  while (true) {
+
+    switch (WiFi.status()) {
+      case WL_NO_SSID_AVAIL: Serial.println("[WiFi] SSID not found"); break;
+      case WL_CONNECT_FAILED:
+        Serial.print("[WiFi] Failed - WiFi not connected! Reason: ");
+        return;
+        break;
+      case WL_CONNECTION_LOST: Serial.println("[WiFi] Connection was lost"); break;
+      case WL_SCAN_COMPLETED:  Serial.println("[WiFi] Scan is completed"); break;
+      case WL_DISCONNECTED:    Serial.println("[WiFi] WiFi is disconnected"); break;
+      case WL_CONNECTED:
+        Serial.println("[WiFi] WiFi is connected!");
+        Serial.print("[WiFi] IP address: ");
+        Serial.println(WiFi.localIP());
+        return;
+        break;
+      default:
+        Serial.print("[WiFi] WiFi Status: ");
+        Serial.println(WiFi.status());
+        break;
+    }
+    delay(tryDelay);
+
+    if (numberOfTries <= 0) {
+      Serial.print("[WiFi] Failed to connect to WiFi!");
+      // Use disconnect function to force stop trying to connect
+      WiFi.disconnect();
+      return;
+    } else {
+      numberOfTries--;
+    }
+  }
+
 
 
   //WiFi.setAutoReconnect(true);
   //WiFi.persistent(true);
 }
 bool isSTA;
+
 void reset_factory() {
 
   SPIFFS.remove("/custom.ini");
   readconfigs();
 }
+
 void setupwifi(int num) {
   NOINTS
 
   while (1) {
     xprintf(PSTR("Wifi Initialization\n"));
     if (num) {
-      xprintf(PSTR("Connected to:%s Ip:%d.%d.%d.%d\n"), wifi_ap, fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
+      // xprintf(PSTR("Connected to:%s Ip:%d.%d.%d.%d\n"), wifi_ap, fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
       //xprintf(PSTR("Disconnect\n"));
-      WiFi.disconnect();
-      server.close();
+      // WiFi.disconnect();
+      // server.close();
       //servertcp.close();
 
 #ifdef WEBSOCKSERVER
@@ -832,7 +872,6 @@ void setupwifi(int num) {
 #endif
     }
     if (wifi_ap) connectWifi(0);
-    // xprintf(PSTR("Connected to:%s Ip:%d.%d.%d.%d\n"), wifi_ap, fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
     String ipa = "->" + wifi_ap;
     ISWIFIOK = 0;
     if ((connect_timeout > 0 && WiFi.status() != WL_CONNECTED) || wifi_ap.length() == 0) {
@@ -1467,13 +1506,13 @@ void setupother() {
 #ifdef WIFISERVER
   setupwifi(0);
 #endif
-zprintf(PSTR("start\nok\n"));
+// zprintf(PSTR("start\nok\n"));
   init_gcode();
-  zprintf(PSTR("start\nok\n"));
+  // zprintf(PSTR("start\nok\n"));
   timer_init();
-  zprintf(PSTR("start\nok\n"));
+  // zprintf(PSTR("start\nok\n"));
   setupok = 1;
-  zprintf(PSTR("start\nok\n"));
+  // zprintf(PSTR("start\nok\n"));
 }
 uint32_t t1;
 void setup() {
