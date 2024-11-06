@@ -131,7 +131,7 @@ extern int32_t startmove();
 extern void initmotion();
 #ifdef ARC_SUPPORT
 
-extern void draw_arc(float cf, float cx2, float cy2, float cz2, float ce02, float fI, float fJ, uint8_t isclockwise);
+extern void draw_arc(float cf, float cx2, float cy2, float cz2, float ce02, float fI, float fJ, uint8_t isclockwise)
 #endif
 extern void addmove(float cf, float cx2, float cy2, float cz2, float ce02, int g0, int rel);
 

@@ -26,6 +26,7 @@
 #include "ir_remote.h"
 #include "ir_oled.h"
 #include <stdint.h>
+#include "esp_task_wdt.h"
 
 //ESP32 ONLY
 #include <WiFi.h>
@@ -114,6 +115,7 @@ extern float stepmmy;
 extern int steppiny, dirpiny;
 
 extern bool isRotary;
+
 
 void sendTelegram(String stext) {
   int ll = karyacncIP.length();
@@ -805,7 +807,7 @@ void connectWifi(int ret = 1) {
     Serial.print(".");
   }
 
-   int tryDelay = 500;
+  int tryDelay = 500;
   int numberOfTries = 20;
 
   while (true) {
@@ -817,8 +819,8 @@ void connectWifi(int ret = 1) {
         return;
         break;
       case WL_CONNECTION_LOST: Serial.println("[WiFi] Connection was lost"); break;
-      case WL_SCAN_COMPLETED:  Serial.println("[WiFi] Scan is completed"); break;
-      case WL_DISCONNECTED:    Serial.println("[WiFi] WiFi is disconnected"); break;
+      case WL_SCAN_COMPLETED: Serial.println("[WiFi] Scan is completed"); break;
+      case WL_DISCONNECTED: Serial.println("[WiFi] WiFi is disconnected"); break;
       case WL_CONNECTED:
         Serial.println("[WiFi] WiFi is connected!");
         Serial.print("[WiFi] IP address: ");
@@ -886,7 +888,7 @@ void setupwifi(int num) {
 
       // if (wifi_dns == "") wifi_dns = "ESP_CNC";
       wifi_dns = "ESP_CNC";
-       WiFi.softAP(wifi_dns);
+      WiFi.softAP(wifi_dns);
 
       //ip = WiFi.softAPIP();
       //xprintf(PSTR("AP:%s Ip:%d.%d.%d.%d\n"), ((' '<wifi_dns[0]<'Z')?wifi_dns:ssid), fi(ip[0]), fi(ip[1]), fi(ip[2]), fi(ip[3]));
@@ -894,12 +896,12 @@ void setupwifi(int num) {
     }
     zprintf(PSTR("start\n wifi ok\n"));
 
-// #ifdef IR_OLED_MENU
-//     extern String IPA;
-//     IPA = ipa;
-//     Serial.end();
-//     hasSerial = 0;
-// #endif
+    // #ifdef IR_OLED_MENU
+    //     extern String IPA;
+    //     IPA = ipa;
+    //     Serial.end();
+    //     hasSerial = 0;
+    // #endif
 
     server.on("/setconfig", HTTP_GET, []() {  // if the client requests the upload page
       NOINTS
@@ -1506,7 +1508,7 @@ void setupother() {
 #ifdef WIFISERVER
   setupwifi(0);
 #endif
-// zprintf(PSTR("start\nok\n"));
+  // zprintf(PSTR("start\nok\n"));
   init_gcode();
   // zprintf(PSTR("start\nok\n"));
   timer_init();
@@ -1520,6 +1522,9 @@ void setup() {
   // Serial.end();
   Serial.begin(115200);
   Serial.println("Nyala");
+
+  // esp_task_wdt_init(10, false);                   // 10 detik timeout, tidak reboot otomatis
+  // esp_task_wdt_add(xTaskGetCurrentTaskHandle());  // Add current task dengan handle yang benar
 
   // pinMode(D0, INPUT_PULLUP);
   // pinMode(D1, INPUT_PULLUP);
@@ -1547,6 +1552,8 @@ int llaserOn = 0;
 long tm1 = 0;
 
 void loop() {
+
+  // esp_task_wdt_reset();
   // Serial.println("Loop");
   extern bool stopping;
   extern void stopmachine2();
@@ -1564,4 +1571,6 @@ void loop() {
   wifi_loop();
   motionloop();
 #endif
+
+  // esp_task_wdt_reset();
 }

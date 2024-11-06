@@ -3,13 +3,15 @@
 
 #include "freertos/FreeRTOS.h"  // Untuk RTOS support di ESP32
 #include "driver/timer.h"       // Untuk menggunakan hardware timer di ESP32
+// #include "esp_task_wdt.h"
 
 #include <stdint.h>
 #include "common.h"
 #include "timer.h"
+// #include "esp_task_wdt.h"
 
-  hw_timer_t *timer1 = NULL;
-  hw_timer_t *timer2 = NULL;
+hw_timer_t *timer1 = NULL;
+hw_timer_t *timer2 = NULL;
 
 long spindle_pwm = 0;
 int min_pwm_clock = 0;  // 2us to turn on anything
@@ -295,10 +297,13 @@ int dogfeed = 0;
 
 
 int feedthedog() {
+  // ESP.wdtFeed();
 
   if (dogfeed++ > dogfeedevery) {
     dogfeed = 0;
     yield();
+    // esp_task_wdt_reset();
+
 #if defined(ESP8266)
     // ESP8266 specific code here
     ESP.wdtFeed();
@@ -306,7 +311,7 @@ int feedthedog() {
     //  esp_task_wdt_reset();
 #else
 #endif
-    //zprintf(PSTR("Feed the dog\n"));
+    // zprintf(PSTR("Feed the dog\n"));
     return 1;
   }
 
@@ -337,7 +342,8 @@ extern bool toolWasOn;
 bool TMTOOL = false;
 bool TMTOOL0 = false;
 
-void THEISR tm01() {
+// void THEISR tm01() {
+void IRAM_ATTR tm01() {
   noInterrupts();
   TMTOOL0 = !TMTOOL0;
   uint32_t t0 = ESP.getCycleCount();
@@ -360,8 +366,12 @@ void THEISR tm01() {
   // timer0_write(t0);
   interrupts();
 }
-void THEISR tm() {
+
+// void THEISR tm() {
+  void IRAM_ATTR tm() {
   noInterrupts();
+  // zprintf(PSTR("\n Interupt OK! \n"));
+  // zprintf(PSTR("."));
   /*
   int d=0;
   // laser timer
@@ -379,24 +389,92 @@ void THEISR tm() {
     //TOOL1(!TOOLON);
   }*/
   int d = timercode();
+  // zprintf(PSTR("\n %d \n"),d);
+  // int d = 1000;
+  // timerAlarmWrite(timer1, d, false);
+  timerAlarm(timer1, d, true, 0);
 
-  timerWrite(timer2, d);
   // timer1_write(d);
   //TOOL1(TMTOOL)
   interrupts();
 }
 
+
+
+// volatile uint32_t lastTmMicros = 0;
+// volatile uint32_t lastTm01Micros = 0;
+// // volatile bool TMTOOL0 = false;
+// const uint32_t TM_INTERVAL = 1000;    // 1ms untuk timer utama
+// const uint32_t TM01_INTERVAL = 10;    // 10us untuk PWM timer
+
+// Fungsi untuk mengecek dan menjalankan timer
+// void checkTimers() {
+//   uint32_t currentMicros = micros();
+
+//   // Check timer utama untuk motion control
+//   if (currentMicros - lastTmMicros >= TM_INTERVAL) {
+//     noInterrupts();
+//     int d = timercode(); // Panggil fungsi timer existing
+//     // Update interval berikutnya berdasarkan nilai d dari timercode()
+//     if (d > 0) {
+//       lastTmMicros += (d / 80); // Konversi cycles ke microseconds (ESP32 running at 80MHz)
+//     } else {
+//       lastTmMicros = currentMicros;
+//     }
+//     interrupts();
+//   }
+
+//   // Check timer PWM untuk laser/spindle control
+//   if (currentMicros - lastTm01Micros >= TM01_INTERVAL) {
+//     noInterrupts();
+//         TMTOOL0 = !TMTOOL0;  // Toggle PWM state
+
+//     if (pwm_val > 0) {
+//       if (pwm_val > 200) {
+//         TOOLPWM(TOOLON);
+//         lastTm01Micros += 100; // 100us untuk PWM penuh
+//       } else {
+//         TOOLPWM(!TMTOOL0);
+//         int v = (pwm_val) << 10;
+//         // Hitung interval PWM berikutnya
+//         lastTm01Micros += ((min_pwm_clock + 1) * 40 +
+//           (TMTOOL0 ? v : 300000 - v)) / 80;
+//       }
+//     } else {
+//       TOOLPWM(!TOOLON);
+//       lastTm01Micros += 1000; // 1ms saat PWM off
+//     }
+//     interrupts();
+//   }
+// }
+
+
+// void timer_init() {
+//   noInterrupts();
+
+//   lastTmMicros = micros();
+//   lastTm01Micros = micros();
+
+// #ifdef RPM_COUNTER
+//   setup_RPM();
+// #endif
+//   set_tool(0);
+//   interrupts();
+// }
+
 void timer_init() {
   //Initialize Ticker every 0.5s
   noInterrupts();
 
+  // disableCore0WDT();
 
+  timer1 = timerBegin(1000000); //jalan di 1Mhz
+  timerAttachInterrupt(timer1, &tm); //attachinterupt ke tm
+  timerAlarm(timer1, 1000000/16, true, 0); //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
+  // timerAlarmWrite(timer1, 200);
+  zprintf(PSTR("\n Interupt OK! \n"));
 
-  timer1 = timerBegin(1000000);
-  timerAttachInterrupt(timer1, &tm);
-  timerAlarm(timer1, 5000000, false, 0);
-  timerWrite(timer1, 1000);
-  timerStart(timer1);
+  // timerStart(timer1);
   // timer1_isr_init();
   // timer1_attachInterrupt(tm);
   // timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
@@ -409,6 +487,8 @@ void timer_init() {
   // timer0_isr_init();
   // timer0_attachInterrupt(tm01);
   // timer0_write(ESP.getCycleCount() + 80 * 10);  //10 us
+
+  // esp_intr_alloc(ETS_TIMER0_INTR_SOURCE, ESP_INTR_FLAG_IRAM, NULL, NULL, NULL);
 
 
 #ifdef RPM_COUNTER
@@ -512,10 +592,13 @@ inline int THEISR timercode() {
   return ndelay >= 30000 ? 30000 : ndelay;
 }
 */
-inline int THEISR timercode() {
+// inline int THEISR timercode() {
+  inline int IRAM_ATTR timercode() {
+  
   ndelay = MINDELAY;
   n1delay = 0;
 
+  // zprintf(PSTR("|"));
   coreloopm();
   return ndelay;
 }
@@ -525,13 +608,16 @@ inline int THEISR timercode() {
 //
 
 // Laser constant burn timer
-void THEISR timer_set(int32_t delay) {
+// void THEISR timer_set(int32_t delay) {
+  void IRAM_ATTR timer_set(int32_t delay) {
+  
   n1delay = 0;     // delay laser
   ndelay = delay;  // delay total
 }
 
 // Laser constant burn timer
-void THEISR timer_set2(int32_t delay1, int32_t delay2) {
+// void THEISR timer_set2(int32_t delay1, int32_t delay2) {
+  void IRAM_ATTR timer_set2(int32_t delay1, int32_t delay2) {
   // delay1 delay of the laser
   // delay2 delay total
   if (delay1 > 0) {

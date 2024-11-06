@@ -22,17 +22,17 @@ extern uint32_t get_RPM();
 
 
 #define SUBMOTION 1
-#define timescaleLARGE timescale*TMSCALE
+#define timescaleLARGE timescale *TMSCALE
 
 extern void set_tool(int v);
 extern void pause_pwm(bool v);
 extern volatile uint32_t ndelay;
 
 
-extern uint32_t	next_step_time;
+extern uint32_t next_step_time;
 extern void timer_init();
-extern  void timer_set(int32_t delay);
-extern void THEISR timer_set2(int32_t delay1,int32_t delay2);
+extern void timer_set(int32_t delay);
+extern void THEISR timer_set2(int32_t delay1, int32_t delay2);
 extern void servo_loop();
 extern void servo_set(int angle);
 
