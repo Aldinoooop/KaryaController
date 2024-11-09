@@ -277,35 +277,35 @@ void readConfig(String fn) {
       extern float pwm_pow;
       pwm_pow = f1.readStringUntil('\n').toFloat();
     }
-    // else if (s1 == "lcd_addr") {
-    //   lcd_rst = f1.readStringUntil('\n').toInt();
-    // } else if (s1 == "ir_pin") {
-    //   lIR_KEY = strToPin(f1);
-    // } else if (s1 == "lcd_rst") {
-    //   lcd_rst = strToPin(f1);
-    // } else if (s1 == "lcd_sda") {
-    //   lcd_sda = strToPin(f1);
-    // } else if (s1 == "lcd_sda2") {
-    //   lcd_sda2 = strToPin(f1);
-    // } else if (s1 == "lcd_contrast") {
-    //   lcd_contrast = constrainF(f1.readStringUntil('\n').toFloat(), 1, 15);
-    // } else if (s1 == "lcd_scl") {
-    //   lcd_scl = strToPin(f1);
-    // } else if (s1 == "lcd_cs") {
-    //   // dont care about CS for now
-    //   s2 = f1.readStringUntil('\n');
-    // } else if (s1 == "lcd_type") {
-    //   s2 = f1.readStringUntil('\n');
+    else if (s1 == "lcd_addr") {
+      lcd_rst = f1.readStringUntil('\n').toInt();
+    } else if (s1 == "ir_pin") {
+      lIR_KEY = strToPin(f1);
+    } else if (s1 == "lcd_rst") {
+      lcd_rst = strToPin(f1);
+    } else if (s1 == "lcd_sda") {
+      lcd_sda = strToPin(f1);
+    } else if (s1 == "lcd_sda2") {
+      lcd_sda2 = strToPin(f1);
+    } else if (s1 == "lcd_contrast") {
+      lcd_contrast = constrainF(f1.readStringUntil('\n').toFloat(), 1, 15);
+    } else if (s1 == "lcd_scl") {
+      lcd_scl = strToPin(f1);
+    } else if (s1 == "lcd_cs") {
+      // dont care about CS for now
+      s2 = f1.readStringUntil('\n');
+    } else if (s1 == "lcd_type") {
+      s2 = f1.readStringUntil('\n');
     // default
-    // lcd_kind = KIND_NK1661;
-    //if (s2=="NK1661")lcd_kind=KIND_NK1661;else
-    // if (s2 == "NK1202") lcd_kind = KIND_NK1202;
-    // else if (s2 == "NK6100") lcd_kind = KIND_NK6100;
-    // else if (s2 == "OLED1306") lcd_kind = KIND_OLED1306;
-    // else if (s2 == "LCD2004") lcd_kind = KIND_LCD2004;
-    // else if (s2 == "ST7565") lcd_kind = KIND_ST7565;
-    // else if (s2 == "ST7735") lcd_kind = KIND_ST7735;
-    // }
+    lcd_kind = KIND_NK1661;
+    if (s2=="NK1661")lcd_kind=KIND_NK1661;else
+    if (s2 == "NK1202") lcd_kind = KIND_NK1202;
+    else if (s2 == "NK6100") lcd_kind = KIND_NK6100;
+    else if (s2 == "OLED1306") lcd_kind = KIND_OLED1306;
+    else if (s2 == "LCD2004") lcd_kind = KIND_LCD2004;
+    else if (s2 == "ST7565") lcd_kind = KIND_ST7565;
+    else if (s2 == "ST7735") lcd_kind = KIND_ST7735;
+    }
     else if (s1 == "tool_pin") {
       atool_pin = strToPin(f1);
     } else if (s1 == "pwm_pin") {
@@ -462,7 +462,7 @@ void readconfigs() {
   // calculate something
   TOOLON = TOOLONS[lasermode];
   pre_motion_set();
-  // restartLCD();
+  restartLCD();
   init_temp();
   if (pwm_pin == -1) pwm_pin = atool_pin;
   pinmode(atool_pin, OUTPUT);
@@ -808,7 +808,7 @@ void connectWifi(int ret = 1) {
   }
 
   int tryDelay = 500;
-  int numberOfTries = 20;
+  int numberOfTries = 10;
 
   while (true) {
 
@@ -1564,7 +1564,7 @@ void loop() {
   motionloop();
   if (c == 0) uncompress_loop();
   motionloop();
-  // IR_loop(0);
+  IR_loop(0);
   motionloop();
   servo_loop();
 #ifdef WIFISERVER

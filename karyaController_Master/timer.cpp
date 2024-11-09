@@ -8,10 +8,19 @@
 #include <stdint.h>
 #include "common.h"
 #include "timer.h"
-// #include "esp_task_wdt.h"
+
+#include <esp_task_wdt.h>
+
+esp_task_wdt_config_t wdt_config = {
+  .timeout_ms = 2000000,      // 2-second timeout
+  .idle_core_mask = 0x03,  // Monitor both Core 0 and Core 1
+  .trigger_panic = false   // Trigger a panic on timeout
+};
 
 hw_timer_t *timer1 = NULL;
 hw_timer_t *timer2 = NULL;
+
+uint32_t lT = 0;
 
 long spindle_pwm = 0;
 int min_pwm_clock = 0;  // 2us to turn on anything
@@ -399,80 +408,20 @@ void IRAM_ATTR tm01() {
   interrupts();
 }
 
-
-
-// volatile uint32_t lastTmMicros = 0;
-// volatile uint32_t lastTm01Micros = 0;
-// // volatile bool TMTOOL0 = false;
-// const uint32_t TM_INTERVAL = 1000;    // 1ms untuk timer utama
-// const uint32_t TM01_INTERVAL = 10;    // 10us untuk PWM timer
-
-// Fungsi untuk mengecek dan menjalankan timer
-// void checkTimers() {
-//   uint32_t currentMicros = micros();
-
-//   // Check timer utama untuk motion control
-//   if (currentMicros - lastTmMicros >= TM_INTERVAL) {
-//     noInterrupts();
-//     int d = timercode(); // Panggil fungsi timer existing
-//     // Update interval berikutnya berdasarkan nilai d dari timercode()
-//     if (d > 0) {
-//       lastTmMicros += (d / 80); // Konversi cycles ke microseconds (ESP32 running at 80MHz)
-//     } else {
-//       lastTmMicros = currentMicros;
-//     }
-//     interrupts();
-//   }
-
-//   // Check timer PWM untuk laser/spindle control
-//   if (currentMicros - lastTm01Micros >= TM01_INTERVAL) {
-//     noInterrupts();
-//         TMTOOL0 = !TMTOOL0;  // Toggle PWM state
-
-//     if (pwm_val > 0) {
-//       if (pwm_val > 200) {
-//         TOOLPWM(TOOLON);
-//         lastTm01Micros += 100; // 100us untuk PWM penuh
-//       } else {
-//         TOOLPWM(!TMTOOL0);
-//         int v = (pwm_val) << 10;
-//         // Hitung interval PWM berikutnya
-//         lastTm01Micros += ((min_pwm_clock + 1) * 40 +
-//           (TMTOOL0 ? v : 300000 - v)) / 80;
-//       }
-//     } else {
-//       TOOLPWM(!TOOLON);
-//       lastTm01Micros += 1000; // 1ms saat PWM off
-//     }
-//     interrupts();
-//   }
-// }
-
-
-// void timer_init() {
-//   noInterrupts();
-
-//   lastTmMicros = micros();
-//   lastTm01Micros = micros();
-
-// #ifdef RPM_COUNTER
-//   setup_RPM();
-// #endif
-//   set_tool(0);
-//   interrupts();
-// }
-
 void timer_init() {
   //Initialize Ticker every 0.5s
   noInterrupts();
 
+  // esp_task_wdt_init(&wdt_config);  // enable panic so ESP32 restarts
+
   // disableCore0WDT();
 
-  timer1 = timerBegin(1000000); //jalan di 1Mhz
-  timerAttachInterrupt(timer1, &tm); //attachinterupt ke tm
-  timerAlarm(timer1, 1000000/16, true, 0); //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
-  // timerAlarmWrite(timer1, 200);
-  zprintf(PSTR("\n Interupt OK! \n"));
+  lT = micros()+1000;
+  // timer1 = timerBegin(1000000); //jalan di 1Mhz
+  // timerAttachInterrupt(timer1, &tm); //attachinterupt ke tm
+  // timerAlarm(timer1, 1000000/16, true, 0); //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
+  // // timerAlarmWrite(timer1, 200);
+  // zprintf(PSTR("\n Interupt OK! \n"));
 
   // timerStart(timer1);
   // timer1_isr_init();
@@ -496,6 +445,14 @@ void timer_init() {
 #endif
   set_tool(0);
   interrupts();
+}
+
+void tmloop(uint32_t T){
+  if(T > lT){
+    uint32_t d = timercode();
+    if( d < MINDELAY)d = MINDELAY;
+    lT = T+d;
+  }
 }
 
 // #endif // esp8266

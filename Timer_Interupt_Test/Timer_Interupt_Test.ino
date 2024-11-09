@@ -1,7 +1,17 @@
+int val = 10000;
+
 // Deklarasi variabel timer
 // hw_timer_t *My_timer = NULL;
 hw_timer_t *timer1 = NULL;
 hw_timer_t *timer2 = NULL;
+
+#include <esp_task_wdt.h>
+
+esp_task_wdt_config_t wdt_config = {
+  .timeout_ms = 2000,      // 2-second timeout
+  .idle_core_mask = 0x02,  // Monitor both Core 0 and Core 1
+  .trigger_panic = false   // Trigger a panic on timeout
+};
 
 
 unsigned long lastMillis = 0;
@@ -11,7 +21,7 @@ int i = 1000;
 void IRAM_ATTR onTimer1() {
   // Tindakan yang akan dilakukan saat interrupt terpicu
   digitalWrite(14, HIGH);
-  // Serial.println(".");
+  // Serial.print(".");
   digitalWrite(14, LOW);
 }
 
@@ -23,6 +33,10 @@ void IRAM_ATTR onTimer2() {
 }
 
 void timer_init() {
+
+  esp_task_wdt_init(&wdt_config);  // enable panic so ESP32 restarts
+  // esp_task_wdt_add(NULL);
+  // esp_task_wdt_add(NULL);
   // Inisialisasi timer dengan timer 0, prescaler 80 (1 tick = 1 µs)
   // My_timer = timerBegin(0, 80, true);
   // My_timer = timerBegin(1000000);
@@ -58,18 +72,20 @@ void setup() {
   pinMode(26, OUTPUT);
   pinMode(14, OUTPUT);
 
+
+
   // Inisialisasi timer
   timer_init();
   // timerWrite(timer1, 5);
 }
 
 void loop() {
-// Serial.println(timerRead(timer1));
+  // Serial.println(timerRead(timer1));
 
-  if(Serial.available()>0){
-    int val = Serial.readStringUntil('\n').toInt();
+  if (Serial.available() > 0) {
+    val = Serial.readStringUntil('\n').toInt();
 
-      timerAlarm(timer1, val, true, 1000);
+    timerAlarm(timer1, val, true, 0);
 
     // timerWrite(timer1, val);
     // timerStart(timer1);
@@ -94,5 +110,4 @@ void loop() {
   //   }
   //   lastMillis = millis();
   // }
-
 }

@@ -35,7 +35,7 @@ extern void timer_set(int32_t delay);
 extern void THEISR timer_set2(int32_t delay1, int32_t delay2);
 extern void servo_loop();
 extern void servo_set(int angle);
-
+extern void tmloop(uint32_t T);
 #ifndef MASK
 /// MASKING- returns \f$2^PIN\f$
 #define MASK(PIN) (1 << PIN)

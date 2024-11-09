@@ -25,11 +25,11 @@
 #endif  // debugloop
 
 
-#ifdef ESP8266
-#define CLOCKCONSTANT 5000000.f  // tick/seconds
-#define DSCALE 0                 // use 5Mhz timer shift 0bit
-#define DIRDELAY 2               // usec
-#endif                           // esp
+// #ifdef ESP8266
+// #define CLOCKCONSTANT 5000000.f  // tick/seconds
+// #define DSCALE 0                 // use 5Mhz timer shift 0bit
+// #define DIRDELAY 2               // usec
+// #endif                           // esp
 
 #ifdef ESP32
 #define CLOCKCONSTANT 1000000.f  // tick/seconds
@@ -1058,8 +1058,8 @@ uint32_t PWMVAL0(float x) {  // x= 0-255
 bool FULLSPEED = false;
 bool pwmOn;
 uint32_t cmdb;
-static THEISR void decodecmd() {
-  // static IRAM_ATTR void decodecmd() {
+// static THEISR void decodecmd() {
+  static IRAM_ATTR void decodecmd() {
   
 
   if (cmdempty) {
@@ -1186,13 +1186,6 @@ int32_t info_x_s, info_y_s, info_z_s;
 
 void IRAM_ATTR coreloopm() {
 
-  // static uint32_t lastWdtReset = 0;
-  // uint32_t now = millis();
-  //   if(now - lastWdtReset > 1000) {
-  //   esp_task_wdt_reset();
-  //   lastWdtReset = now;
-  // }
-
   if (cmdempty) {
     // zprintf(PSTR("CMD EMPTY"));
     //RUNNING = 1;
@@ -1203,20 +1196,8 @@ void IRAM_ATTR coreloopm() {
     lastmove = false;
     cmdve = cve = pve = ppve = 0;
 
-    // Penting: Jangan loop terus saat buffer kosong
-    // timerWrite(timer1, MINDELAY * 10); // Set delay lebih lama saat idle
     return;
   }
-
-  // static uint32_t lastDebug = 0;
-  // uint32_t now = millis();
-
-  // Debug setiap 1 detik
-  // if (now - lastDebug > 1000) {
-  //   zprintf(PSTR("coreloopm: nextok=%d cmbit=0x%02X\n"),
-  //           nextok, cmbit);
-  //   lastDebug = now;
-  // }
 
   //servo_loop();
   //dmc=(micros()-mc); mc=micros();
@@ -1394,6 +1375,8 @@ int motionloop() {
 #if defined(ESP32) || defined(ESP8266)
   feedthedog();
 #endif
+
+  tmloop(cm);
 
   fixed_global_multiplier = FLOAT_TO_FIXED(f_multiplier * f2_multiplier);
 
