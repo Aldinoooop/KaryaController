@@ -26,20 +26,12 @@
 #include "ir_remote.h"
 #include "ir_oled.h"
 #include <stdint.h>
-#include "esp_task_wdt.h"
+
 
 //ESP32 ONLY
-#include <WiFi.h>
-#include <WiFiAP.h>
-#include <HTTPClient.h>
-#include <WebServer.h>
-#include "FS.h"
-#include "SPIFFS.h"
-#include <WebSocketsServer.h>
 
-WebServer server(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
 //================================================//
+
 
 #ifndef WIFISERVER
 // provide empty implementation
@@ -66,7 +58,9 @@ inline void setupwifi(int num) {}
 ESP8266WebServer server(80);
 #define WIFI_AUTH_OPEN ENC_TYPE_NONE
 // ===============================
-#elif ESP32
+
+#else
+
 #include <WiFi.h>
 #include <WiFiAP.h>
 #include <HTTPClient.h>
@@ -74,6 +68,7 @@ ESP8266WebServer server(80);
 #include "FS.h"
 #include "SPIFFS.h"
 #include <WebSocketsServer.h>
+#include "esp_task_wdt.h"
 
 WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
@@ -133,8 +128,33 @@ void sendTelegram(String stext) {
 void downloadFile(String durl, String outf) {
 }
 
+#ifdef ESP8266
 int strToPin(File f1, char u = '\n') {
   String s2 = f1.readStringUntil(u);
+  if (s2 == "D1")return D1;
+  if (s2 == "D2")return D2;
+  if (s2 == "D3")return D3;
+  if (s2 == "D4")return D4;
+  if (s2 == "D5")return D5;
+  if (s2 == "D6")return D6;
+  if (s2 == "D7")return D7;
+  if (s2 == "D8")return D8;
+  if (s2 == "D0")return D0;
+  if (s2 == "TX")return TX;
+  if (s2 == "RX")return RX;
+  if (s2 == "A0")return A0;
+  if (s2 == "?")return 255;
+  return -1;
+}
+#endif
+
+#ifndef ESP8266
+int strToPin(File f1, char u = '\n') {
+  String s2 = f1.readStringUntil(u);
+  if (s2 == "D1")return 23;
+  if (s2 == "D2")return 21;
+  if (s2 == "D3")return 22;
+
   if (s2 == "IO15") return 15;
   if (s2 == "IO2") return 2;
   if (s2 == "IO0") return 0;
@@ -165,6 +185,11 @@ int strToPin(File f1, char u = '\n') {
   if (s2 == "?") return 255;
   return -1;
 }
+
+#endif
+
+
+
 int strToMt(String s2) {
   if (s2 == "X") return 0;
   if (s2 == "Y") return 1;
@@ -1520,8 +1545,13 @@ uint32_t t1;
 void setup() {
   // lets put all on INPUT_PULLUP
   // Serial.end();
+  
   Serial.begin(115200);
-  Serial.println("Nyala");
+  // #ifdef defined(ESP32)
+  // Serial.println("DEFINED ESP32");
+  // #elif defined(ESP8266)
+  // Serial.println("DEFINED ESP8266");
+  // #endif
 
   // esp_task_wdt_init(10, false);                   // 10 detik timeout, tidak reboot otomatis
   // esp_task_wdt_add(xTaskGetCurrentTaskHandle());  // Add current task dengan handle yang benar

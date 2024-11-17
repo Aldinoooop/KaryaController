@@ -6,7 +6,7 @@
 
 
 #define NUMBUFFER 20
-#define output_enable
+// #define output_enable
 
 #define THEISR ICACHE_RAM_ATTR
 

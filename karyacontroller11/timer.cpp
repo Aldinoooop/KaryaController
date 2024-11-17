@@ -404,34 +404,6 @@ void timer_init()
 }
 
 #endif // esp8266
-
-#ifdef ESP32
-
-
-void timer_init()
-{
-  //Initialize Ticker every 0.5s
-  noInterrupts();
-
-  timer1_isr_init();
-  timer1_attachInterrupt(tm);
-  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
-  timer1_write(1000); //200 us
-
-  timer0_isr_init();
-  timer0_attachInterrupt(tm01);
-  timer0_write(ESP.getCycleCount() + 80 * 10); //10 us
-
-
-#ifdef RPM_COUNTER
-  setup_RPM();
-#endif
-  set_tool(0);
-  interrupts();
-}
-
-#endif
-
 #ifdef ESP32
 #define USETIMEROK
 typedef struct {

@@ -25,11 +25,11 @@
 #endif  // debugloop
 
 
-// #ifdef ESP8266
-// #define CLOCKCONSTANT 5000000.f  // tick/seconds
-// #define DSCALE 0                 // use 5Mhz timer shift 0bit
-// #define DIRDELAY 2               // usec
-// #endif                           // esp
+#ifdef ESP8266
+#define CLOCKCONSTANT 5000000.f  // tick/seconds
+#define DSCALE 0                 // use 5Mhz timer shift 0bit
+#define DIRDELAY 2               // usec
+#endif                           // esp
 
 #ifdef ESP32
 #define CLOCKCONSTANT 1000000.f  // tick/seconds
@@ -665,9 +665,9 @@ void addmove(float cf, float cx2, float cy2, float cz2, float ce02, int g0 = 1, 
 
   int32_t x2[NUMAXIS];
   // #ifdef output_enable
-  zprintf(PSTR("\n\nADDMOVE\nTail:%d Head:%d \n"), fi(tail), fi(head));
-  zprintf(PSTR("F:%f From X:%f Y:%f Z:%f E:%f\n"), ff(cf), ff(cx1), ff(cy1), ff(cz1), ff(ce01));
-  zprintf(PSTR("To X:%f Y:%f Z:%f E:%f\n"), ff(cx2), ff(cy2), ff(cz2), ff(ce02));
+  // zprintf(PSTR("\n\nADDMOVE\nTail:%d Head:%d \n"), fi(tail), fi(head));
+  // zprintf(PSTR("F:%f From X:%f Y:%f Z:%f E:%f\n"), ff(cf), ff(cx1), ff(cy1), ff(cz1), ff(ce01));
+  // zprintf(PSTR("To X:%f Y:%f Z:%f E:%f\n"), ff(cx2), ff(cy2), ff(cz2), ff(ce02));
   // #endif
   tmove *curr;
   curr = &moves[nextbuff(head)];
@@ -707,7 +707,7 @@ void addmove(float cf, float cx2, float cy2, float cz2, float ce02, int g0 = 1, 
   //mmdis[3] = (ce02 - ce01) * odir[3];
 
 #ifdef output_enable
-  zprintf(PSTR("Dis X:%f Y:%f Z:%f\n"), ff(mmdis[0]), ff(mmdis[1]), ff(mmdis[2]));
+  // zprintf(PSTR("Dis X:%f Y:%f Z:%f\n"), ff(mmdis[0]), ff(mmdis[1]), ff(mmdis[2]));
 #endif
 
   for (int i = 0; i < NUMAXIS; i++) {
@@ -841,9 +841,9 @@ void addmove(float cf, float cx2, float cy2, float cz2, float ce02, int g0 = 1, 
 
   // if zero length then cancel
   if (dd > MINSTEP) {
-#ifdef output_enable
-    zprintf(PSTR("Totalstep AX%d %d\n"), (int32_t)faxis, (int32_t)curr->dx[faxis]);
-#endif
+// #ifdef output_enable
+//     zprintf(PSTR("Totalstep AX%d %d\n"), (int32_t)faxis, (int32_t)curr->dx[faxis]);
+// #endif
     curr->status |= faxis << 4;
     //zprintf(PSTR("F:%f A:%d\n"), ff(cf), fi(curr->ac));
     if (head == tail) {  // if this the first entry in buffer then keep the data on OTX
@@ -1822,17 +1822,14 @@ float Interpolizer(int zX, int zY) {
 #include <WiFiAP.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
+#include "FS.h"
+#include "SPIFFS.h"
+#include <WebSocketsServer.h>
 #endif
 #endif
 
 //ESP32 ONLY
-#include <WiFi.h>
-#include <WiFiAP.h>
-#include <HTTPClient.h>
-#include <WebServer.h>
-#include "FS.h"
-#include "SPIFFS.h"
-#include <WebSocketsServer.h>
+
 
 void waitloop() {
   //extern uint32_t cm;

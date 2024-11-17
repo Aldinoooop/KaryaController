@@ -1,24 +1,37 @@
 #include <stdlib.h>
 #include <stdio.h>
-
-#include "freertos/FreeRTOS.h"  // Untuk RTOS support di ESP32
-#include "driver/timer.h"       // Untuk menggunakan hardware timer di ESP32
-// #include "esp_task_wdt.h"
-
 #include <stdint.h>
 #include "common.h"
+
+#ifndef ESP8266
 #include "timer.h"
-
-#include <esp_task_wdt.h>
-
-esp_task_wdt_config_t wdt_config = {
-  .timeout_ms = 2000000,      // 2-second timeout
-  .idle_core_mask = 0x03,  // Monitor both Core 0 and Core 1
-  .trigger_panic = false   // Trigger a panic on timeout
-};
+#include "freertos/FreeRTOS.h"  // Untuk RTOS support di ESP32
+#include "driver/timer.h"       // Untuk menggunakan hardware timer di ESP32
+// #include <esp_task_wdt.h>
 
 hw_timer_t *timer1 = NULL;
 hw_timer_t *timer2 = NULL;
+#endif
+
+// esp_task_wdt_config_t wdt_config = {
+//   .timeout_ms = 2000000,      // 2-second timeout
+//   .idle_core_mask = 0x03,  // Monitor both Core 0 and Core 1
+//   .trigger_panic = false   // Trigger a panic on timeout
+// };
+
+
+
+// timer_t *timer1 = NULL;
+// timer_t *timer2 = NULL;
+
+// #endif
+
+
+
+
+
+
+
 
 uint32_t lT = 0;
 
@@ -118,6 +131,7 @@ int X9pos = 100;
 
 
 bool in_pwm_loop = false;
+
 void set_tool(int v) {
   extern int lasermode, uncompress;
   if (uncompress && v == 0 && lasermode == 0) v = 255;  // make sure its running when running job on router
@@ -132,7 +146,9 @@ void set_tool(int v) {
   }
   constantlaserVal = v;
   lastS = v;
+  digitalWrite(atool_pin,v>0);
 }
+
 void set_toolx(int v) {  // 0-255
   /*  
   if (v > 255)v = 255;
@@ -340,9 +356,94 @@ uint32_t next_step_time;
 inline int THEISR timercode();
 // -------------------------------------   ESP8266  ----------------------------------------------------------
 // #ifdef ESP8266
+
+#ifdef ESP8266
+
 #define USETIMEROK
 #define MINDELAY 100
 #define usetmr1
+
+int tm_mode=0;
+extern int lasermode;
+extern uint32_t pwm_val;
+extern bool toolWasOn;
+bool TMTOOL=false;
+bool TMTOOL0=false;
+
+void THEISR tm01()
+{
+  noInterrupts();
+  TMTOOL0=!TMTOOL0;
+  uint32_t t0=ESP.getCycleCount();
+  if (pwm_val>0){
+    if (pwm_val>200){
+      TOOLPWM(TOOLON);
+      t0+=100000;
+      // always on
+    } else {
+      TOOLPWM(TMTOOL0);
+      //int v=(pwm_val*pwm_val)>>2;
+      int v=(pwm_val)<<10;
+      t0+=(min_pwm_clock+1)*40+(TMTOOL0?v:300000-v);
+    }
+  } else {
+    TOOLPWM(!TOOLON);
+    t0+=100000;
+  }
+  timer0_write(t0);
+  interrupts();
+}
+
+void THEISR tm()
+{
+  noInterrupts();
+  /*
+  int d=0;
+  // laser timer
+  if (tm_mode==1){
+    tm_mode=0;
+    // Turn off laser
+    d=n1delay;
+  }
+  if (d==0) {
+  // motor timer
+    d = timercode();
+    tm_mode=n1delay>0?1:0;
+  } else {     
+    //TMTOOL=!TOOLON;
+    //TOOL1(!TOOLON);
+  }*/
+  int d = timercode();
+  
+  timer1_write(d);
+  //TOOL1(TMTOOL)
+  interrupts();
+}
+
+void timer_init()
+{
+  //Initialize Ticker every 0.5s
+  noInterrupts();
+
+  timer1_isr_init();
+  timer1_attachInterrupt(tm);
+  timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
+  timer1_write(1000); //200 us
+
+  timer0_isr_init();
+  timer0_attachInterrupt(tm01);
+  timer0_write(ESP.getCycleCount() + 80 * 10); //10 us
+
+
+#ifdef RPM_COUNTER
+  setup_RPM();
+#endif
+  set_tool(0);
+  interrupts();
+}
+
+#else
+// #endif
 
 int tm_mode = 0;
 extern int lasermode;
@@ -447,108 +548,25 @@ void timer_init() {
   interrupts();
 }
 
+#endif
+
+
+#define USETIMEROK
+#define MINDELAY 100
+#define usetmr1
+
+
+
 void tmloop(uint32_t T){
   if(T > lT){
     uint32_t d = timercode();
     if( d < MINDELAY)d = MINDELAY;
     lT = T+d;
   }
+
+  analogWrite(tool_pin, constantlaserVal * (cmdve/(100 << 6)))
 }
 
-// #endif // esp8266
-// #ifdef ESP32
-// #define USETIMEROK
-// typedef struct {
-//   union {
-//     struct {
-//       uint32_t reserved0:   10;
-//       uint32_t alarm_en:     1;             /*When set  alarm is enabled*/
-//       uint32_t level_int_en: 1;             /*When set  level type interrupt will be generated during alarm*/
-//       uint32_t edge_int_en:  1;             /*When set  edge type interrupt will be generated during alarm*/
-//       uint32_t divider:     16;             /*Timer clock (T0/1_clk) pre-scale value.*/
-//       uint32_t autoreload:   1;             /*When set  timer 0/1 auto-reload at alarming is enabled*/
-//       uint32_t increase:     1;             /*When set  timer 0/1 time-base counter increment. When cleared timer 0 time-base counter decrement.*/
-//       uint32_t enable:       1;             /*When set  timer 0/1 time-base counter is enabled*/
-//     };
-//     uint32_t val;
-//   } config;
-//   uint32_t cnt_low;                             /*Register to store timer 0/1 time-base counter current value lower 32 bits.*/
-//   uint32_t cnt_high;                            /*Register to store timer 0 time-base counter current value higher 32 bits.*/
-//   uint32_t update;                              /*Write any value will trigger a timer 0 time-base counter value update (timer 0 current value will be stored in registers above)*/
-//   uint32_t alarm_low;                           /*Timer 0 time-base counter value lower 32 bits that will trigger the alarm*/
-//   uint32_t alarm_high;                          /*Timer 0 time-base counter value higher 32 bits that will trigger the alarm*/
-//   uint32_t load_low;                            /*Lower 32 bits of the value that will load into timer 0 time-base counter*/
-//   uint32_t load_high;                           /*higher 32 bits of the value that will load into timer 0 time-base counter*/
-//   uint32_t reload;                              /*Write any value will trigger timer 0 time-base counter reload*/
-// } xhw_timer_reg_t;
-
-// typedef struct xhw_timer_s {
-//   xhw_timer_reg_t * dev;
-//   uint8_t num;
-//   uint8_t group;
-//   uint8_t timer;
-//   portMUX_TYPE lock;
-// } xhw_timer_t;
-
-
-// hw_timer_t * timer = NULL;
-// portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-
-
-// void THEISR xtimerAlarmWrite(xhw_timer_s *timer, uint64_t alarm_value) {
-//   timer->dev->alarm_high = (uint32_t) (alarm_value >> 32);
-//   timer->dev->alarm_low = (uint32_t) alarm_value;
-//   timer->dev->config.autoreload = true;
-//   timer->dev->config.alarm_en = 1;
-// }
-
-// void THEISR tm() {
-//   portENTER_CRITICAL_ISR(&timerMux);
-//   int d = timercode();
-
-//   xtimerAlarmWrite((xhw_timer_s*)timer, d < 6 ? 6 : d);
-
-//   portEXIT_CRITICAL_ISR(&timerMux);
-// }
-
-// void timer_init()
-// {
-//   timer = timerBegin(0, 80, true);
-//   timerAttachInterrupt(timer, &tm, true);
-//   xtimerAlarmWrite((xhw_timer_s*)timer, 12000);
-//   zprintf(PSTR("Time init\n"));
-// }
-
-/*
-  #undef timerPause()
-  #undef timerResume()
-  int tmrstack=0;
-  void THEISR timerPause(){
-  tmrstack++;
-  if (tmrstack==1)((xhw_timer_s*) timer)->dev->config.alarm_en = 0;
-  }
-  void THEISR timerResume(){
-  tmrstack--;
-  if (tmrstack==0)((xhw_timer_s*) timer)->dev->config.alarm_en = 1;
-  }
-*/
-
-// #endif //esp32
-
-// ======= the same code for all cpu ======
-
-/*
-inline int THEISR timercode() {
-  if (ndelay < 30000) {
-    ndelay = MINDELAY;
-    coreloopm();
-  } else {
-    ndelay -= 30000;
-  }
-  //pwm_loop();
-  return ndelay >= 30000 ? 30000 : ndelay;
-}
-*/
 // inline int THEISR timercode() {
   inline int IRAM_ATTR timercode() {
   

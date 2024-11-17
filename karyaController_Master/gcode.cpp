@@ -7,14 +7,13 @@
 #include "eprom.h"
 #include "gcodesave.h"
 
-#if defined(ESP32) || defined(ESP8266)
 
 // ==========================
-#ifdef ESP8266
+#if  defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <FS.h>   // Include the SPIFFS library
+#else
 // ==========================
-#elif ESP32
 #include <WiFi.h>
 #include <WiFiAP.h>
 #include <HTTPClient.h>
@@ -22,25 +21,22 @@
 #include "FS.h"
 #include "SPIFFS.h"
 #include <WebSocketsServer.h>
-// ==========================
 #endif
+// ==========================
 
 //ESP32 ONLY
-#include <WiFi.h>
-#include <WiFiAP.h>
-#include <HTTPClient.h>
-#include <WebServer.h>
-#include "FS.h"
-#include "SPIFFS.h"
-#include <WebSocketsServer.h>
+// #include <WiFi.h>
+// #include <WiFiAP.h>
+// #include <HTTPClient.h>
+// #include <WebServer.h>
+// #include "FS.h"
+// #include "SPIFFS.h"
+// #include <WebSocketsServer.h>
 
 
 //#include <WiFiClient.h>
 File fme;
-
 extern IPAddress ip ;
-
-#endif
 
 int32_t linecount, lineprocess;
 

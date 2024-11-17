@@ -50,9 +50,9 @@
 #include "timer.h"   // Include the SPIFFS library
 #include "gcodesave.h"   // Include the SPIFFS library
 
-// #ifdef IR_OLED_MENU
-// #include "ir_oled.h"
-// #endif
+#ifdef IR_OLED_MENU
+#include "ir_oled.h"
+#endif
 
 #define NOINTS timerPause();
 #define INTS timerResume();

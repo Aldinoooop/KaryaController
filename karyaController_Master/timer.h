@@ -32,7 +32,8 @@ extern volatile uint32_t ndelay;
 extern uint32_t next_step_time;
 extern void timer_init();
 extern void timer_set(int32_t delay);
-extern void THEISR timer_set2(int32_t delay1, int32_t delay2);
+extern void IRAM_ATTR timer_set2(int32_t delay1, int32_t delay2);
+// extern void timer_set2(int32_t delay1, int32_t delay2);
 extern void servo_loop();
 extern void servo_set(int angle);
 extern void tmloop(uint32_t T);
@@ -50,12 +51,11 @@ extern void tmloop(uint32_t T);
 #define ATOMIC_END
 #endif
 
-#ifdef xESP32
-extern void THEISR timerPause();
-extern void THEISR timerResume();
-
-#else
+// #ifdef ESP32
+// extern void IRAM_ATTR timerPause();
+// extern void IRAM_ATTR timerResume();
+// #else
 #define timerPause()
 #define timerResume()
-#endif
+// #endif
 #endif

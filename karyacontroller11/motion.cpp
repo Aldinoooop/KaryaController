@@ -10,7 +10,7 @@
 #include<Arduino.h>
 #include "eprom.h"
 #include "gcodesave.h"
-// #include "ir_remote.h"
+#include "ir_remote.h"
 
 
 
@@ -1804,8 +1804,8 @@ float Interpolizer(int  zX, int zY) {
   Proses semua gerakan di buffer, dan akhiri dengan deselerasi ke 0
 */
 
-// #include <ESP8266WiFi.h>
-// #include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
 
 void waitloop(){
     //extern uint32_t cm;

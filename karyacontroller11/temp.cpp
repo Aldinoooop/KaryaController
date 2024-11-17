@@ -11,8 +11,8 @@ int BUZZER_ERR=-1;
 
 #include <OneWire.h> 
 #include <DallasTemperature.h>
-// OneWire oneWire(D2); 
-// DallasTemperature sensors(&oneWire);
+OneWire oneWire(D2); 
+DallasTemperature sensors(&oneWire);
 
 #ifdef EMULATETEMP
 #undef ISRTEMP
@@ -69,13 +69,13 @@ void init_temp()
   set_temp(0);
 // have temp sensor (and water and buzzer error)
 
-  // if (ltemp_pin>-1){
-	//   oneWire.begin(ltemp_pin);
-	//   sensors.begin();
-	//   sensors.setWaitForConversion(false);
-	//   //sensors.setResolution(9);
-	//   sensors.requestTemperatures();
-	// }
+  if (ltemp_pin>-1){
+	  oneWire.begin(ltemp_pin);
+	  sensors.begin();
+	  sensors.setWaitForConversion(false);
+	  //sensors.setResolution(9);
+	  sensors.requestTemperatures();
+	}
   fail1=3;
 }
 
@@ -157,90 +157,90 @@ uint32_t ectstep2 = 0;
 int tmc1 = 0;
 
 
-// void temp_loop(uint32_t cm)
-// {
-//   if (cm - next_temp > 450000) { // 900ms
-//     float sec = (cm - next_temp) / 1000000.0;
-//     if (sec > 1)sec = 1;
-//     next_temp = cm; // each 0.5 second
-// 	int v=0;
-// 	if (water_pin>-1) {
-// 		int w=analogRead(water_pin);
-// 		water= water*0.8+w*0.2;
-// 	} else {
-// 		water=1000; // assume water OK
-// 	}
+void temp_loop(uint32_t cm)
+{
+  if (cm - next_temp > 450000) { // 900ms
+    float sec = (cm - next_temp) / 1000000.0;
+    if (sec > 1)sec = 1;
+    next_temp = cm; // each 0.5 second
+	int v=0;
+	if (water_pin>-1) {
+		int w=analogRead(water_pin);
+		water= water*0.8+w*0.2;
+	} else {
+		water=1000; // assume water OK
+	}
 	
-// 	if (ltemp_pin>-1){
-// 		if (sensors.isConversionComplete())	{
-// 			float t=sensors.getTempCByIndex(0);
-// 			//t=27+(t-27)*0.9; // calibration 
-// 			//if (t>20){
-// 				fail1=3;
-// 				//if (Input>20){
-// 				//	if (fabs(t-Input)>5)t=Input; // skip sudden change
-// 				//	if (fabs(t-Input)>1.5) t=Input+(t-Input)*0.1;
-// 				//}	 		
-// 				Input=Input*0.8+t*0.2; // averaging
+	if (ltemp_pin>-1){
+		if (sensors.isConversionComplete())	{
+			float t=sensors.getTempCByIndex(0);
+			//t=27+(t-27)*0.9; // calibration 
+			//if (t>20){
+				fail1=3;
+				//if (Input>20){
+				//	if (fabs(t-Input)>5)t=Input; // skip sudden change
+				//	if (fabs(t-Input)>1.5) t=Input+(t-Input)*0.1;
+				//}	 		
+				Input=Input*0.8+t*0.2; // averaging
 				
-// 				Input=t;
-// 				#ifdef PLOTTING
-// 				push_temp(Input);
-// 				#endif
-// 			//} else {
-// 				fail1--;			
-// 			//}
-// 			if (fail1)sensors.requestTemperatures();
-// 		} else {
-// 			fail1--;
-// 		}
-// 		if (!fail1) {init_temp();}
-// 	}
-// /*	#else  
-// 	v = analogRead(temp_pin);// >> ANALOGSHIFT;
-//     //v = v * 3.3 + 120; //200K resistor
-//     //v = v * 1 + 120; //22K resistor
-//     //v = v * 0.3 + 120; //22K resistor
+				Input=t;
+				#ifdef PLOTTING
+				push_temp(Input);
+				#endif
+			//} else {
+				fail1--;			
+			//}
+			if (fail1)sensors.requestTemperatures();
+		} else {
+			fail1--;
+		}
+		if (!fail1) {init_temp();}
+	}
+/*	#else  
+	v = analogRead(temp_pin);// >> ANALOGSHIFT;
+    //v = v * 3.3 + 120; //200K resistor
+    //v = v * 1 + 120; //22K resistor
+    //v = v * 0.3 + 120; //22K resistor
 
 
-//     //    ctemp = v;//(ctemp * 2 + v * 6) / 8; // averaging
-//     ctemp = (ctemp + v) / 2; // averaging
-//     Input =  ctemp;//read_temp(ctemp);
-//     //Input = 100;
-//     #endif
-// */
-// 	  extern void dopause(int tm,bool stopping);
-// 	  if (water<600 || Input>temp_limit){
-// 		if (--machinefail<8) {
-// 			BuzzError(machinefail & 1) ;
-// 			if (machinefail<0){
-// 				extern int uncompress,ispause;
-// 				if (uncompress && !ispause){
-// 					dopause(0,false);// pause and wait until all sensors ok
-// 					machinehasfail=10;
-// 				}
-// 				machinefail=12;
-// 			}
-// 		}
+    //    ctemp = v;//(ctemp * 2 + v * 6) / 8; // averaging
+    ctemp = (ctemp + v) / 2; // averaging
+    Input =  ctemp;//read_temp(ctemp);
+    //Input = 100;
+    #endif
+*/
+	  extern void dopause(int tm,bool stopping);
+	  if (water<600 || Input>temp_limit){
+		if (--machinefail<8) {
+			BuzzError(machinefail & 1) ;
+			if (machinefail<0){
+				extern int uncompress,ispause;
+				if (uncompress && !ispause){
+					dopause(0,false);// pause and wait until all sensors ok
+					machinehasfail=10;
+				}
+				machinefail=12;
+			}
+		}
 		
-// 	  } else {
-// 		if (machinehasfail==0) {  
-// 			BuzzError(LOW);
-// 			if (++machinefail>20)machinefail=20;
-// 		} else {
-// 			BuzzError(machinehasfail & 1);
-// 			if (--machinehasfail<2){
-// 				machinehasfail=0;
-// 				//dopause(0); // resume job
-// 			}
-// 		}
-// 	  }
+	  } else {
+		if (machinehasfail==0) {  
+			BuzzError(LOW);
+			if (++machinefail>20)machinefail=20;
+		} else {
+			BuzzError(machinehasfail & 1);
+			if (--machinehasfail<2){
+				machinehasfail=0;
+				//dopause(0); // resume job
+			}
+		}
+	  }
 		
-//    }
-// }
+   }
+}
 
-// int temp_achieved() {
-//   return Input >= Setpoint;
+int temp_achieved() {
+  return Input >= Setpoint;
 
-//   //  return fabs(Input - Setpoint) < 10;
-// }
+  //  return fabs(Input - Setpoint) < 10;
+}

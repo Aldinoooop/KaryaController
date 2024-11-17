@@ -23,10 +23,9 @@
 #include "timer.h"
 #include "eprom.h"
 #include "gcodesave.h"
-// #include "ir_remote.h"
-// #include "ir_oled.h"
+#include "ir_remote.h"
+#include "ir_oled.h"
 #include <stdint.h>
-#include "SPIFFS.h"
 
 
 #ifndef WIFISERVER
@@ -1144,7 +1143,7 @@ void setupwifi(int num)
       server.sendHeader("Access-Control-Allow-Origin", "*");
       server.send(200);
     }, // Send status 200 (OK) to tell the client we are ready to receive
-    00 // Receive and save the file
+    handleFileUpload // Receive and save the file
              );
 
     server.onNotFound([]() { // If the client requests any URI
@@ -1243,7 +1242,6 @@ void important_loop() {
   wmc = cm;
 }
 long ipcheck = 0;
-
 void wifi_loop()
 {
   extern int nextok;
@@ -1455,13 +1453,13 @@ void setup()
   // lets put all on INPUT_PULLUP
   Serial.end();
 
-  // pinMode(D0, INPUT_PULLUP);
-  // pinMode(D1, INPUT_PULLUP);
-  // pinMode(D2, INPUT_PULLUP);
-  // pinMode(D3, INPUT_PULLUP);
-  // pinMode(D4, INPUT_PULLUP);
-  // pinMode(D5, INPUT_PULLUP);
-  // pinMode(D6, INPUT_PULLUP);
+  pinMode(D0, INPUT_PULLUP);
+  pinMode(D1, INPUT_PULLUP);
+  pinMode(D2, INPUT_PULLUP);
+  pinMode(D3, INPUT_PULLUP);
+  pinMode(D4, INPUT_PULLUP);
+  pinMode(D5, INPUT_PULLUP);
+  pinMode(D6, INPUT_PULLUP);
   pinMode(RX, INPUT_PULLUP);
   pinMode(TX, INPUT_PULLUP);
   //pinMode(A0, INPUT_PULLDOWN);
@@ -1488,7 +1486,7 @@ void loop()
   motionloop();
   if (c == 0) uncompress_loop();
   motionloop();
-  // IR_loop(0);
+  IR_loop(0);
   motionloop();
   servo_loop();
 #ifdef WIFISERVER

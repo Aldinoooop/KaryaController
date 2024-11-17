@@ -22,11 +22,13 @@ int thc_ofs0=0;
 int wait_job = 0;
 int wait_spindle = 0;
 String jobnum;
+
 void IR_setup() {
-  // IR_ok = IRBegin(lIR_KEY);
+  IR_ok = IRBegin(lIR_KEY);
   //IR_ok = IRLremote.begin(D1);
   //if (IR_ok) zprintf(PSTR("IR Key OK.\n"));
 }
+
 void IR_end() {
   IREnd(lIR_KEY);
   IR_ok = 0;
@@ -146,7 +148,9 @@ void special_loop(int xcmd,bool skipcheck){
 float stepmmy=0;
 int steppiny,dirpiny;
 bool isRotary;
+
 void IR_loop(int mode = 0) {
+
   if (cm - lastirok > 10000000) {
     lastirok = cm;
     IR_end();
@@ -158,7 +162,9 @@ void IR_loop(int mode = 0) {
   int num;
   float x, y, z;
   if (!IR_ok)return;
+
   int xcmd = getRemoteKey();
+  // Serial.println(String("xcmd = ") + String(xcmd));
  
   if (xcmd)
   {
@@ -168,7 +174,7 @@ void IR_loop(int mode = 0) {
     int ok = ir_oled_loop(xcmd);
     special_loop(xcmd,false);
     if (ok) goto return1; // the key is consumed by the display
-    //zprintf(PSTR("Key:%d \n"),fi(data.command));
+    // zprintf(PSTR("Key:%d \n"),fi(data.command));
     extern int8_t RUNNING;
     extern int uncompress;
     // if not uncompress/running internal Gcode, we can JOG

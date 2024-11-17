@@ -400,11 +400,9 @@ void pausemachine()
   if (PAUSE)zprintf(PSTR("Pause\n"));
   else zprintf(PSTR("Resume\n"));
 }
-
-// #ifdef IR_OLED_MENU
-// #include "ir_oled.h"
-// #endif
-
+#ifdef IR_OLED_MENU
+#include "ir_oled.h"
+#endif
 bool stopping=false;
 void stopmachine(){
   stopping=true;

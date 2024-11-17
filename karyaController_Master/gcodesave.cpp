@@ -37,19 +37,18 @@
 
 #ifdef ESP32
 #include <WiFi.h>
-#include <FS.h>   // Include the SPIFFS library
-#elif ESP8266
-#include <ESP8266WiFi.h>
-#endif
-
-//ESP32 ONLY
-#include <WiFi.h>
 #include <WiFiAP.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include "FS.h"
 #include "SPIFFS.h"
 #include <WebSocketsServer.h>
+#elif ESP8266
+#include <ESP8266WiFi.h>
+#endif
+
+//ESP32 ONLY
+
 
 
 #include <FS.h>   // Include the SPIFFS library
