@@ -818,22 +818,22 @@ void connectWifi(int ret = 1) {
 
   int cntr = connect_timeout;
 
-  while (WiFi.status() != WL_CONNECTED && cntr > 0) {
-    delay(200);
-#ifdef IR_OLED_MENU
-    // d_clear();
-    // d_text(0, 0, VERSION);
-    // d_text(0, 1, "connecting ... " + String(cntr));
-    // d_text(0, 2, wifi_ap);
-    // d_show();
-#endif
-    cntr--;
-    // xprintf(PSTR("."));
-    Serial.print(".");
-  }
+//   while (WiFi.status() != WL_CONNECTED && cntr > 0) {
+//     delay(200);
+// #ifdef IR_OLED_MENU
+//     d_clear();
+//     d_text(0, 0, VERSION);
+//     d_text(0, 1, "connecting ... " + String(cntr));
+//     d_text(0, 2, wifi_ap);
+//     d_show();
+// #endif
+//     cntr--;
+//     // xprintf(PSTR("."));
+//     Serial.print(".");
+//   }
 
   int tryDelay = 500;
-  int numberOfTries = 10;
+  int numberOfTries = connect_timeout;
 
   while (true) {
 
@@ -867,6 +867,17 @@ void connectWifi(int ret = 1) {
     } else {
       numberOfTries--;
     }
+
+    #ifdef IR_OLED_MENU
+    d_clear();
+    d_text(0, 0, VERSION);
+    d_text(0, 1, "connecting ... " + String(cntr));
+    d_text(0, 2, wifi_ap);
+    d_show();
+#endif
+    cntr--;
+    // xprintf(PSTR("."));
+    Serial.print(".");
   }
 
 
@@ -1540,6 +1551,8 @@ void setupother() {
   // zprintf(PSTR("start\nok\n"));
   setupok = 1;
   // zprintf(PSTR("start\nok\n"));
+
+  ledcAttach(atool_pin, 500, 8);
 }
 uint32_t t1;
 void setup() {
@@ -1575,6 +1588,7 @@ void setup() {
   t1 = millis();
   //while (!Serial.available())continue;
   setupother();
+  // Serial.end();
 }
 
 bool pumpon = true;

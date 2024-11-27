@@ -784,6 +784,8 @@ void check_job() {
 void clearJobs(void) {
 }
 
+// #include "FS.h"
+#include "SPIFFS.h"
 #ifdef ESP8266
 int getJobs(void) {
   Dir dir = SPIFFS.openDir("/");
@@ -807,20 +809,22 @@ int getJobs(void) {
 #endif
 
 #ifdef ESP32
-#include "FS.h"
+// #include "FS.h"
 #include "SPIFFS.h"
 // #include <SdFat.h>
 int getJobs(void) {
   // Dir dir = SPIFFS.openDir("/");
   File dir = SPIFFS.open("/");
+  // Serial.println(SPIFFS.open("/"));
   File file = dir.openNextFile();
-
+  // zprintf("OKE OPEN DIR");
   menu_2_t[0] = "File name";
   menu_2_t[1] = "Kb";
   ojobname = "";
   int i = 0;
   while (file) {
     String s = file.name();
+    Serial.println(s);
     if (s.endsWith(".gcode") && i < NUMJOBS) {
       s.remove(0, 1);
       s.remove(s.length() - 6);
@@ -829,6 +833,8 @@ int getJobs(void) {
       menu_2_t[i * 2 + 3] = String(file.size() / 1000);
       i++;
     }
+
+    file = dir.openNextFile();
   }
   return i * 2 + 2;
 }

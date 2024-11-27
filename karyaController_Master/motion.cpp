@@ -33,9 +33,9 @@
 
 #ifdef ESP32
 #define CLOCKCONSTANT 1000000.f  // tick/seconds
-#define DSCALE 0                  // use 5Mhz timer shift 0bit
-#define DIRDELAY 2                // usec
-#endif                            // esp
+#define DSCALE 0                 // use 5Mhz timer shift 0bit
+#define DIRDELAY 2               // usec
+#endif                           // esp
 
 
 #ifdef INVERTENDSTOP
@@ -328,7 +328,7 @@ void waitloop();
 static void pushcmd() {
   // zprintf(PSTR(".\n"));
   // Tambah timeout untuk menghindari infinite loop
-    if (checkendstop && (endstopstatus < 0))return;
+  if (checkendstop && (endstopstatus < 0)) return;
   // wait until a buffer freed
 
   while (cmdfull) {
@@ -841,9 +841,9 @@ void addmove(float cf, float cx2, float cy2, float cz2, float ce02, int g0 = 1, 
 
   // if zero length then cancel
   if (dd > MINSTEP) {
-// #ifdef output_enable
-//     zprintf(PSTR("Totalstep AX%d %d\n"), (int32_t)faxis, (int32_t)curr->dx[faxis]);
-// #endif
+    // #ifdef output_enable
+    //     zprintf(PSTR("Totalstep AX%d %d\n"), (int32_t)faxis, (int32_t)curr->dx[faxis]);
+    // #endif
     curr->status |= faxis << 4;
     //zprintf(PSTR("F:%f A:%d\n"), ff(cf), fi(curr->ac));
     if (head == tail) {  // if this the first entry in buffer then keep the data on OTX
@@ -1059,8 +1059,10 @@ bool FULLSPEED = false;
 bool pwmOn;
 uint32_t cmdb;
 // static THEISR void decodecmd() {
-  static IRAM_ATTR void decodecmd() {
+// static IRAM_ATTR void decodecmd() {
   
+void IRAM_ATTR decodecmd() {
+
 
   if (cmdempty) {
     // zprintf(PSTR("CMD EMPTY"));
@@ -1187,8 +1189,6 @@ int32_t info_x_s, info_y_s, info_z_s;
 void IRAM_ATTR coreloopm() {
 
   if (cmdempty) {
-    // zprintf(PSTR("CMD EMPTY"));
-    //RUNNING = 1;
     if (lastmove) {
       if (lasermode) TOOL1(!TOOLON);
     }
@@ -1372,11 +1372,11 @@ int motionloop() {
   //return 0;
   // prevent wait
   cm = micros();
-#if defined(ESP32) || defined(ESP8266)
+  // #if defined(ESP32) || defined(ESP8266)
   feedthedog();
-#endif
+  // #endif
 
-  tmloop(cm);
+  // tmloop(cm);
 
   fixed_global_multiplier = FLOAT_TO_FIXED(f_multiplier * f2_multiplier);
 

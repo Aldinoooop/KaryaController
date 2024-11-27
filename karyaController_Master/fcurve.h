@@ -118,7 +118,7 @@ int coreloopscurve() {
       // zprintf(PSTR("S1:%f  S2:%f S3:%f  S4:%f\n"), ff(s1),  ff(s2),  ff(s3),  ff(s4));
       // zprintf(PSTR("S5:%f  S6:%f S7:%f\n"), ff(s5),  ff(s6),  ff(s7));
       // zprintf(PSTR("V:%f A:%f J:%f\n"), ff(V), ff(a2), ff(a1x));
-    }
+    } 
 #endif
     sg++;
     if (sg == 1){

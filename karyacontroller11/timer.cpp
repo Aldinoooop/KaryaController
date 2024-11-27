@@ -406,6 +406,7 @@ void timer_init()
 #endif // esp8266
 #ifdef ESP32
 #define USETIMEROK
+
 typedef struct {
   union {
     struct {

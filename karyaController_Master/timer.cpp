@@ -146,7 +146,10 @@ void set_tool(int v) {
   }
   constantlaserVal = v;
   lastS = v;
-  digitalWrite(atool_pin,v>0);
+  v = map(v, 0, 255, 0, 100);
+  ledcWrite(atool_pin, v);
+  // digitalWrite(atool_pin, v > 0);
+  // digitalWrite(atool_pin,HIGH);
 }
 
 void set_toolx(int v) {  // 0-255
@@ -363,39 +366,37 @@ inline int THEISR timercode();
 #define MINDELAY 100
 #define usetmr1
 
-int tm_mode=0;
+int tm_mode = 0;
 extern int lasermode;
 extern uint32_t pwm_val;
 extern bool toolWasOn;
-bool TMTOOL=false;
-bool TMTOOL0=false;
+bool TMTOOL = false;
+bool TMTOOL0 = false;
 
-void THEISR tm01()
-{
+void THEISR tm01() {
   noInterrupts();
-  TMTOOL0=!TMTOOL0;
-  uint32_t t0=ESP.getCycleCount();
-  if (pwm_val>0){
-    if (pwm_val>200){
+  TMTOOL0 = !TMTOOL0;
+  uint32_t t0 = ESP.getCycleCount();
+  if (pwm_val > 0) {
+    if (pwm_val > 200) {
       TOOLPWM(TOOLON);
-      t0+=100000;
+      t0 += 100000;
       // always on
     } else {
       TOOLPWM(TMTOOL0);
       //int v=(pwm_val*pwm_val)>>2;
-      int v=(pwm_val)<<10;
-      t0+=(min_pwm_clock+1)*40+(TMTOOL0?v:300000-v);
+      int v = (pwm_val) << 10;
+      t0 += (min_pwm_clock + 1) * 40 + (TMTOOL0 ? v : 300000 - v);
     }
   } else {
     TOOLPWM(!TOOLON);
-    t0+=100000;
+    t0 += 100000;
   }
   timer0_write(t0);
   interrupts();
 }
 
-void THEISR tm()
-{
+void THEISR tm() {
   noInterrupts();
   /*
   int d=0;
@@ -414,25 +415,24 @@ void THEISR tm()
     //TOOL1(!TOOLON);
   }*/
   int d = timercode();
-  
+
   timer1_write(d);
   //TOOL1(TMTOOL)
   interrupts();
 }
 
-void timer_init()
-{
+void timer_init() {
   //Initialize Ticker every 0.5s
   noInterrupts();
 
   timer1_isr_init();
   timer1_attachInterrupt(tm);
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
-  timer1_write(1000); //200 us
+  timer1_write(1000);  //200 us
 
   timer0_isr_init();
   timer0_attachInterrupt(tm01);
-  timer0_write(ESP.getCycleCount() + 80 * 10); //10 us
+  timer0_write(ESP.getCycleCount() + 80 * 10);  //10 us
 
 
 #ifdef RPM_COUNTER
@@ -478,7 +478,7 @@ void IRAM_ATTR tm01() {
 }
 
 // void THEISR tm() {
-  void IRAM_ATTR tm() {
+void IRAM_ATTR tm() {
   noInterrupts();
   // zprintf(PSTR("\n Interupt OK! \n"));
   // zprintf(PSTR("."));
@@ -512,17 +512,13 @@ void IRAM_ATTR tm01() {
 void timer_init() {
   //Initialize Ticker every 0.5s
   noInterrupts();
-
-  // esp_task_wdt_init(&wdt_config);  // enable panic so ESP32 restarts
-
-  // disableCore0WDT();
-
-  lT = micros()+1000;
-  // timer1 = timerBegin(1000000); //jalan di 1Mhz
-  // timerAttachInterrupt(timer1, &tm); //attachinterupt ke tm
-  // timerAlarm(timer1, 1000000/16, true, 0); //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
-  // // timerAlarmWrite(timer1, 200);
-  // zprintf(PSTR("\n Interupt OK! \n"));
+  // disableCore0WDT();  // Menonaktifkan WDT untuk core 0
+  // lT = micros()+1000;
+  timer1 = timerBegin(1000000);        //jalan di 1Mhz
+  timerAttachInterrupt(timer1, &tm);   //attachinterupt ke tm
+  timerAlarm(timer1, 1000, false, 0);  //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
+  // timerAlarmWrite(timer1, 200);
+  zprintf(PSTR("\n Interupt OK! \n"));
 
   // timerStart(timer1);
   // timer1_isr_init();
@@ -557,19 +553,21 @@ void timer_init() {
 
 
 
-void tmloop(uint32_t T){
-  if(T > lT){
-    uint32_t d = timercode();
-    if( d < MINDELAY)d = MINDELAY;
-    lT = T+d;
+void tmloop(uint32_t T) {
+  if (T > lT) {
+    // uint32_t d = timercode();
+    uint32_t d = 100;
+    if (d < MINDELAY) d = MINDELAY;
+    lT = T + d;
   }
 
-  analogWrite(tool_pin, constantlaserVal * (cmdve/(100 << 6)))
+  // analogWrite(tool_pin, constantlaserVal * (cmdve/(100 << 6)))
 }
 
 // inline int THEISR timercode() {
-  inline int IRAM_ATTR timercode() {
-  
+// inline int IRAM_ATTR timercode() {
+int IRAM_ATTR timercode() {
+
   ndelay = MINDELAY;
   n1delay = 0;
 
@@ -584,15 +582,15 @@ void tmloop(uint32_t T){
 
 // Laser constant burn timer
 // void THEISR timer_set(int32_t delay) {
-  void IRAM_ATTR timer_set(int32_t delay) {
-  
+void IRAM_ATTR timer_set(int32_t delay) {
+
   n1delay = 0;     // delay laser
   ndelay = delay;  // delay total
 }
 
 // Laser constant burn timer
 // void THEISR timer_set2(int32_t delay1, int32_t delay2) {
-  void IRAM_ATTR timer_set2(int32_t delay1, int32_t delay2) {
+void IRAM_ATTR timer_set2(int32_t delay1, int32_t delay2) {
   // delay1 delay of the laser
   // delay2 delay total
   if (delay1 > 0) {
