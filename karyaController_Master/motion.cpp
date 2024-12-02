@@ -32,7 +32,7 @@
 #endif                           // esp
 
 #ifdef ESP32
-#define CLOCKCONSTANT 1000000.f  // tick/seconds
+#define CLOCKCONSTANT 100000.f  // tick/seconds
 #define DSCALE 0                 // use 5Mhz timer shift 0bit
 #define DIRDELAY 2               // usec
 #endif                           // esp
@@ -345,7 +345,7 @@ uint32_t stepdiv4;
 
 void newdircommand(int laserval) {
   // Tambahkan debug
-  zprintf(PSTR("newdircommand: laserval=%d\n"), laserval);
+  // zprintf(PSTR("newdircommand: laserval=%d\n"), laserval);
 
   laserval = (3 + laserval) >> 2;
   if (laserval > 63) laserval = 63;
@@ -389,7 +389,7 @@ void newdircommand(int laserval) {
 
   cmd0 |= uint32_t(stepdiv2 << 13);
 
-  zprintf(PSTR("\nFinal cmd0: 0x%08X\n"), cmd0);
+  // zprintf(PSTR("\nFinal cmd0: 0x%08X\n"), cmd0);
 
   pushcmd();
 }
@@ -1060,7 +1060,7 @@ bool pwmOn;
 uint32_t cmdb;
 // static THEISR void decodecmd() {
 // static IRAM_ATTR void decodecmd() {
-  
+
 void IRAM_ATTR decodecmd() {
 
 
@@ -1307,6 +1307,7 @@ void IRAM_ATTR coreloopm() {
   // next command
   nextok = 0;
   decodecmd();
+
 }
 
 
@@ -1481,7 +1482,7 @@ int32_t startmove() {
 
   // Tambah pengecekan buffer
   if (NUMCMDBUF - cmd_ctr < 3) {
-    zprintf(PSTR("Buffer nearly full - waiting\n"));
+    // zprintf(PSTR("Buffer nearly full - waiting\n"));
     delay(10);
     return 0;
   }
@@ -1554,8 +1555,8 @@ int32_t startmove() {
   DOCHECKENDSTOP
   =================================================================================================================================================
 */
-
-void THEISR docheckendstop(int m) {
+void IRAM_ATTR docheckendstop(int m) {
+// void THEISR docheckendstop(int m) {
 
   m = 1;
   if (limit_pin > -1) {

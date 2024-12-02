@@ -823,16 +823,17 @@ int getJobs(void) {
   ojobname = "";
   int i = 0;
   while (file) {
-    String s = file.name();
+    String s = dir.getNextFileName();
     Serial.println(s);
     if (s.endsWith(".gcode") && i < NUMJOBS) {
       s.remove(0, 1);
       s.remove(s.length() - 6);
       //s.remove(0,1);
       menu_2_t[i * 2 + 2] = s;
-      menu_2_t[i * 2 + 3] = String(file.size() / 1000);
+      menu_2_t[i * 2 + 3] = String(dir.size() / 1000);
       i++;
     }
+    // file 
 
     file = dir.openNextFile();
   }

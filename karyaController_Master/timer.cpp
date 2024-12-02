@@ -7,7 +7,7 @@
 #include "timer.h"
 #include "freertos/FreeRTOS.h"  // Untuk RTOS support di ESP32
 #include "driver/timer.h"       // Untuk menggunakan hardware timer di ESP32
-// #include <esp_task_wdt.h>
+#include <esp_task_wdt.h>
 
 hw_timer_t *timer1 = NULL;
 hw_timer_t *timer2 = NULL;
@@ -513,12 +513,14 @@ void timer_init() {
   //Initialize Ticker every 0.5s
   noInterrupts();
   // disableCore0WDT();  // Menonaktifkan WDT untuk core 0
+  
   // lT = micros()+1000;
-  timer1 = timerBegin(1000000);        //jalan di 1Mhz
+  timer1 = timerBegin(100000);        //jalan di 1Mhz
   timerAttachInterrupt(timer1, &tm);   //attachinterupt ke tm
   timerAlarm(timer1, 1000, false, 0);  //alarm timer1 menjalankan void tm setiap 1Mhz/16.Auto reload = true , Jumlah reload = 0(artinya unlimited);
   // timerAlarmWrite(timer1, 200);
   zprintf(PSTR("\n Interupt OK! \n"));
+  disableCore1WDT();
 
   // timerStart(timer1);
   // timer1_isr_init();
